@@ -144,7 +144,7 @@ const DashboardLayout = ({ children }) => {
   ];
 
   return (
-    <div className="flex h-screen bg-[#0a0a0a] overflow-hidden">
+    <div className="flex h-screen bg-[#0a0a0a]">
       {/* Side Navigation Rail - Visible only on md and up */}
       <nav className="hidden md:flex md:w-20 bg-[#0f1117] border-r border-gray-800/50 flex-col items-center py-4 md:py-8 gap-4 md:gap-8 z-50">
         <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 mb-2 md:mb-4 cursor-pointer hover:scale-110 transition-transform">
@@ -183,7 +183,7 @@ const DashboardLayout = ({ children }) => {
       </nav>
 
       {/* Content Area */}
-      <main className="flex-1 min-w-0 relative w-full h-full overflow-hidden">
+      <main className="flex-1 min-w-0 relative w-full h-full">
         {children}
       </main>
 
