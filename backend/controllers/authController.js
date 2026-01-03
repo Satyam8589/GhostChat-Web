@@ -8,12 +8,12 @@ export const checkServer = async (req, res) => {
 
 export const register = async (req, res) => {
     try {
-        const { username, email, password, deviceId, deviceName, fingerprint } = req.body;
+        const { name, username, email, password, deviceId, deviceName, fingerprint } = req.body;
 
-        if (!username || !email || !password) {
+        if (!name || !username || !email || !password) {
             return res.status(400).json({
                 success: false,
-                message: "Username, email, and password are required"
+                message: "Name, username, email, and password are required"
             });
         }
 
@@ -46,9 +46,13 @@ export const register = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const newUser = new User({
-            username,
+            name,
+            username: username.toLowerCase(),
             email,
             password: hashedPassword,
+            status: "online",  // Set status to online when registering
+            lastSeen: new Date(),
+            lastLogin: new Date(),
             devices: deviceId ? [{
                 deviceId: deviceId || `device_${Date.now()}`,
                 deviceName: deviceName || "Unknown Device",
@@ -71,6 +75,7 @@ export const register = async (req, res) => {
 
         const userResponse = {
             id: newUser._id,
+            name: newUser.name,
             username: newUser.username,
             email: newUser.email,
             profilePicture: newUser.profilePicture,
@@ -133,6 +138,12 @@ export const login = async (req, res) => {
             });
         }
 
+        // Update user status to online and lastSeen
+        user.status = "online";
+        user.lastSeen = new Date();
+        user.lastLogin = new Date();
+        await user.save();
+
         const token = jwt.sign(
             { 
                 userId: user._id,
@@ -144,6 +155,7 @@ export const login = async (req, res) => {
 
         const userResponse = {
             id: user._id,
+            name: user.name,
             username: user.username,
             email: user.email,
             profilePicture: user.profilePicture,
@@ -198,6 +210,13 @@ export const logout = async (req, res) => {
         }
 
         user.devices = user.devices.filter(device => device.deviceId !== deviceId);
+
+        // If no active devices remain, set status to offline
+        const hasActiveDevices = user.devices.some(device => device.isActive);
+        if (!hasActiveDevices) {
+            user.status = "offline";
+            user.lastSeen = new Date();
+        }
 
         await user.save();
 

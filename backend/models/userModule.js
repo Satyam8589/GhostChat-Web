@@ -2,16 +2,28 @@ import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
+    name: {
+      type: String,
+      required: [true, "Name is required"],
+      trim: true,
+      minlength: [2, "Name must be at least 2 characters"],
+      maxlength: [50, "Name cannot exceed 50 characters"],
+    },
+
     username: {
       type: String,
       required: [true, "Username is required"],
       unique: true,
       trim: true,
+      lowercase: true,
       minlength: [3, "Username must be at least 3 characters"],
       maxlength: [30, "Username cannot exceed 30 characters"],
-      match: [/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores"],
+      match: [
+        /^[a-z0-9_]+$/,
+        "Username can only contain lowercase letters, numbers, and underscores",
+      ],
     },
-    
+
     email: {
       type: String,
       required: [true, "Email is required"],
@@ -20,7 +32,7 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       match: [/^\S+@\S+\.\S+$/, "Please provide a valid email address"],
     },
-    
+
     password: {
       type: String,
       required: [true, "Password is required"],
@@ -32,11 +44,29 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
-    
+
     bio: {
       type: String,
       maxlength: [200, "Bio cannot exceed 200 characters"],
       default: "",
+    },
+
+    phone: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    location: {
+      type: String,
+      maxlength: [100, "Location cannot exceed 100 characters"],
+      default: "",
+      trim: true,
+    },
+
+    isPinned: {
+      type: Boolean,
+      default: false,
     },
 
     publicKey: {
@@ -129,6 +159,7 @@ userSchema.index({ isActive: 1 });
 userSchema.virtual("profile").get(function () {
   return {
     id: this._id,
+    name: this.name,
     username: this.username,
     email: this.email,
     profilePicture: this.profilePicture,
@@ -139,11 +170,13 @@ userSchema.virtual("profile").get(function () {
 });
 
 userSchema.methods.hasDevice = function (deviceId) {
-  return this.devices.some((device) => device.deviceId === deviceId && device.isActive);
+  return this.devices.some(
+    (device) => device.deviceId === deviceId && device.isActive
+  );
 };
 userSchema.methods.addDevice = function (deviceId, deviceName, fingerprint) {
   const existingDevice = this.devices.find((d) => d.deviceId === deviceId);
-  
+
   if (existingDevice) {
     existingDevice.lastSeen = Date.now();
     existingDevice.isActive = true;
@@ -156,7 +189,7 @@ userSchema.methods.addDevice = function (deviceId, deviceName, fingerprint) {
       isActive: true,
     });
   }
-  
+
   return this.save();
 };
 

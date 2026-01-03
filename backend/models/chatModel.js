@@ -10,7 +10,7 @@ const chatSchema = new mongoose.Schema(
 
     name: {
       type: String,
-      required: function() {
+      required: function () {
         return this.type === "group";
       },
       trim: true,
@@ -34,14 +34,14 @@ const chatSchema = new mongoose.Schema(
     admin: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: function() {
+      required: function () {
         return this.type === "group";
       },
     },
 
     groupKey: {
       type: String,
-      required: function() {
+      required: function () {
         return this.type === "group";
       },
     },
@@ -81,6 +81,24 @@ const chatSchema = new mongoose.Schema(
         default: null,
       },
     },
+
+    userPreferences: [
+      {
+        userId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          required: true,
+        },
+        pinned: {
+          type: Boolean,
+          default: false,
+        },
+        archived: {
+          type: Boolean,
+          default: false,
+        },
+      },
+    ],
   },
   {
     timestamps: true,
@@ -92,17 +110,22 @@ chatSchema.index({ type: 1 });
 chatSchema.index({ lastMessageTime: -1 });
 chatSchema.index({ isActive: 1 });
 
-chatSchema.methods.isParticipant = function(userId) {
-  return this.participants.some(
-    (participantId) => participantId.toString() === userId.toString()
-  );
+chatSchema.methods.isParticipant = function (userId) {
+  return this.participants.some((participant) => {
+    // Handle both populated (user object) and unpopulated (ObjectId) cases
+    const participantId = participant._id || participant;
+    return participantId.toString() === userId.toString();
+  });
 };
 
-chatSchema.methods.isAdmin = function(userId) {
-  return this.admin && this.admin.toString() === userId.toString();
+chatSchema.methods.isAdmin = function (userId) {
+  if (!this.admin) return false;
+  // Handle both populated (user object) and unpopulated (ObjectId) cases
+  const adminId = this.admin._id || this.admin;
+  return adminId.toString() === userId.toString();
 };
 
-chatSchema.methods.addParticipant = function(userId) {
+chatSchema.methods.addParticipant = function (userId) {
   if (!this.isParticipant(userId)) {
     this.participants.push(userId);
     return this.save();
@@ -110,14 +133,14 @@ chatSchema.methods.addParticipant = function(userId) {
   return Promise.resolve(this);
 };
 
-chatSchema.methods.removeParticipant = function(userId) {
+chatSchema.methods.removeParticipant = function (userId) {
   this.participants = this.participants.filter(
     (participantId) => participantId.toString() !== userId.toString()
   );
   return this.save();
 };
 
-chatSchema.methods.getParticipantCount = function() {
+chatSchema.methods.getParticipantCount = function () {
   return this.participants.length;
 };
 
