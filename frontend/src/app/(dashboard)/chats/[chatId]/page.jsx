@@ -35,8 +35,11 @@ export default function ChatPage() {
   const dispatch = useDispatch();
   const chatId = params.chatId;
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const emojiPickerRef = useRef(null);
+  const inputRef = useRef(null);
+  const [userHasScrolled, setUserHasScrolled] = useState(false);
 
   const [message, setMessage] = useState("");
   const [isUserTyping, setIsUserTyping] = useState(false);
@@ -116,10 +119,95 @@ export default function ChatPage() {
     }
   }, [chatId, socket, connected, dispatch]);
 
-  // Scroll to bottom when messages change
+  // Track previous message count to detect new messages
+  const prevMessageCountRef = useRef(messages.length);
+  const isInitialLoadRef = useRef(true);
+  const hasScrolledToBottomRef = useRef(false);
+
+  // Initial scroll to bottom when messages first load
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messages.length > 0 && isInitialLoadRef.current && !hasScrolledToBottomRef.current) {
+      const container = messagesContainerRef.current;
+      
+      if (container) {
+        // Use requestAnimationFrame to ensure DOM is ready
+        const scrollToBottom = () => {
+          requestAnimationFrame(() => {
+            if (container.scrollHeight > 0) {
+              container.scrollTop = container.scrollHeight;
+              hasScrolledToBottomRef.current = true;
+              isInitialLoadRef.current = false;
+            }
+          });
+        };
+
+        // Multiple attempts with increasing delays
+        scrollToBottom();
+        setTimeout(scrollToBottom, 100);
+        setTimeout(scrollToBottom, 300);
+        setTimeout(scrollToBottom, 600);
+      }
+    }
   }, [messages]);
+
+  // Reset initial load flag when changing chats
+  useEffect(() => {
+    isInitialLoadRef.current = true;
+    hasScrolledToBottomRef.current = false;
+    setUserHasScrolled(false);
+  }, [chatId]);
+
+  // Scroll to bottom when NEW messages arrive - only if user is at bottom
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const isAtBottom = scrollHeight - scrollTop - clientHeight < 100;
+
+    // Check if there are new messages
+    const hasNewMessages = messages.length > prevMessageCountRef.current;
+    
+    // Only auto-scroll if:
+    // 1. There are new messages AND
+    // 2. User is at the bottom (or hasn't scrolled up)
+    // 3. It's not the initial load (handled separately)
+    if (hasNewMessages && (isAtBottom || !userHasScrolled) && !isInitialLoadRef.current) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    }
+
+    // Update previous message count
+    prevMessageCountRef.current = messages.length;
+  }, [messages, userHasScrolled]);
+
+  // Detect when user manually scrolls
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    let scrollTimeout;
+    const handleScroll = () => {
+      // Clear previous timeout
+      if (scrollTimeout) clearTimeout(scrollTimeout);
+
+      // Wait a bit to see if user is done scrolling
+      scrollTimeout = setTimeout(() => {
+        const { scrollTop, scrollHeight, clientHeight } = container;
+        const isAtBottom = scrollHeight - scrollTop - clientHeight < 100;
+        
+        // Update scroll state based on position
+        setUserHasScrolled(!isAtBottom);
+      }, 150);
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      if (scrollTimeout) clearTimeout(scrollTimeout);
+    };
+  }, []);
 
   // Mark messages as read when new messages arrive
   useEffect(() => {
@@ -166,6 +254,9 @@ export default function ChatPage() {
         dispatch(emitUserStopTyping(chatId));
       }
 
+      // Reset scroll flag so new message scrolls to bottom
+      setUserHasScrolled(false);
+
       // Send message through Redux
       await dispatch(
         sendMessage({
@@ -174,6 +265,11 @@ export default function ChatPage() {
           messageType: "text",
         })
       );
+
+      // Keep input focused (prevents keyboard from closing on mobile)
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
     }
   };
 
@@ -387,7 +483,10 @@ export default function ChatPage() {
         </div>
 
         {/* Messages Area */}
-        <div className="flex-1 bg-gray-900/30 backdrop-blur-xl border-x border-white/10 ring-1 ring-white/20 shadow-2xl overflow-y-auto p-6 space-y-4">
+        <div 
+          ref={messagesContainerRef}
+          className="flex-1 bg-gray-900/30 backdrop-blur-xl border-x border-white/10 ring-1 ring-white/20 shadow-2xl overflow-y-auto p-6 space-y-4"
+        >
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <p className="text-gray-500">
@@ -496,6 +595,7 @@ export default function ChatPage() {
 
             {/* Message Input */}
             <input
+              ref={inputRef}
               type="text"
               value={message}
               onChange={(e) => {
@@ -504,6 +604,7 @@ export default function ChatPage() {
               }}
               placeholder="Type a message..."
               className="flex-1 bg-gray-950/50 border border-gray-800/50 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all duration-300"
+              autoComplete="off"
             />
 
             {/* Emoji Button */}
