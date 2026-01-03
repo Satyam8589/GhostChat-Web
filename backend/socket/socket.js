@@ -9,9 +9,27 @@ let io;
  * @param {http.Server} server - HTTP server instance
  */
 export const initializeSocket = (server) => {
+  // CORS Configuration - Support multiple origins
+  const allowedOrigins = [
+    process.env.CLIENT_URL,
+    'http://localhost:3000',
+    'http://localhost:3001',
+  ].filter(Boolean);
+
   io = new Server(server, {
     cors: {
-      origin: process.env.CLIENT_URL || 'http://localhost:3000',
+      origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps)
+        if (!origin) return callback(null, true);
+        
+        // Check if origin is in allowed list or matches Vercel preview pattern
+        if (allowedOrigins.includes(origin) || origin.includes('.vercel.app')) {
+          callback(null, true);
+        } else {
+          console.warn(`Socket.IO CORS blocked origin: ${origin}`);
+          callback(new Error('Not allowed by CORS'));
+        }
+      },
       methods: ['GET', 'POST'],
       credentials: true,
     },
