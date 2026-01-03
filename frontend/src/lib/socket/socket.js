@@ -22,13 +22,11 @@ const SOCKET_CONFIG = {
 export const initializeSocket = (token) => {
   // If socket exists and is connected, return it
   if (socket && socket.connected) {
-    console.log("Socket already connected");
     return socket;
   }
 
   // If socket exists but is disconnected, try to reconnect
   if (socket && !socket.connected) {
-    console.log("Reconnecting existing socket...");
     socket.auth = { token };
     socket.connect();
     return socket;
@@ -47,34 +45,25 @@ export const initializeSocket = (token) => {
 
   // Connection event handlers
   socket.on("connect", () => {
-    console.log("✅ Socket connected:", socket.id);
     errorLogged = false; // Reset error flag on successful connection
   });
 
-  socket.on("disconnect", (reason) => {
-    console.log("❌ Socket disconnected:", reason);
-  });
+  socket.on("disconnect", (reason) => {});
 
   let errorLogged = false;
   socket.on("connect_error", (error) => {
     // Only log error once to avoid console spam
     if (!errorLogged) {
-      console.error("🔴 Socket connection error:", error.message);
-      console.log("💡 Make sure backend is running on port 5000");
       errorLogged = true;
     }
   });
 
   socket.on("reconnect", (attemptNumber) => {
-    console.log("🔄 Socket reconnected after", attemptNumber, "attempts");
     errorLogged = false;
   });
 
   socket.on("reconnect_attempt", (attemptNumber) => {
-    // Only log every 5th attempt to reduce spam
-    if (attemptNumber % 5 === 0) {
-      console.log("🔄 Reconnection attempt:", attemptNumber);
-    }
+    // Silent reconnection attempts
   });
 
   socket.on("reconnect_error", (error) => {
@@ -82,7 +71,7 @@ export const initializeSocket = (token) => {
   });
 
   socket.on("reconnect_failed", () => {
-    console.error("🔴 Reconnection failed after maximum attempts");
+    // Reconnection failed silently
   });
 
   // Connect the socket
@@ -106,7 +95,6 @@ export const disconnectSocket = () => {
   if (socket) {
     socket.disconnect();
     socket = null;
-    console.log("Socket disconnected and cleaned up");
   }
 };
 
@@ -119,8 +107,6 @@ export const disconnectSocket = () => {
 export const emitEvent = (event, data, callback) => {
   if (socket && socket.connected) {
     socket.emit(event, data, callback);
-  } else {
-    console.warn("Socket is not connected. Cannot emit event:", event);
   }
 };
 
@@ -132,8 +118,6 @@ export const emitEvent = (event, data, callback) => {
 export const onEvent = (event, callback) => {
   if (socket) {
     socket.on(event, callback);
-  } else {
-    console.warn("Socket is not initialized. Cannot listen to event:", event);
   }
 };
 
