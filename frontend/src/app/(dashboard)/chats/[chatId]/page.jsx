@@ -44,6 +44,7 @@ export default function ChatPage() {
   const [message, setMessage] = useState("");
   const [isUserTyping, setIsUserTyping] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showRoomNotification, setShowRoomNotification] = useState(false);
 
   // Redux state
   const { user } = useSelector((state) => state.auth);
@@ -109,13 +110,38 @@ export default function ChatPage() {
   // Join/leave socket room separately
   useEffect(() => {
     if (chatId && socket && connected) {
+      console.log(`🔌 Attempting to join chat room: ${chatId}`);
+      console.log(`📡 Socket ID: ${socket.id}, Connected: ${connected}`);
+
       // Join chat room via socket
       dispatch(joinChatRoom(chatId));
 
+      // Listen for room join confirmation
+      const handleRoomJoined = (data) => {
+        console.log(`✅ Room join confirmed:`, data);
+        console.log(`👥 Room members: ${data.roomSize}`);
+
+        if (data.chatId === chatId) {
+          setShowRoomNotification(true);
+          // Hide notification after 3 seconds
+          setTimeout(() => {
+            setShowRoomNotification(false);
+          }, 3000);
+        }
+      };
+
+      socket.on("chat:joined", handleRoomJoined);
+
       // Cleanup: leave chat room on unmount
       return () => {
+        console.log(`📤 Leaving chat room: ${chatId}`);
+        socket.off("chat:joined", handleRoomJoined);
         dispatch(leaveChatRoom(chatId));
       };
+    } else {
+      console.warn(
+        `⚠️ Cannot join room - chatId: ${!!chatId}, socket: ${!!socket}, connected: ${connected}`
+      );
     }
   }, [chatId, socket, connected, dispatch]);
 
@@ -126,9 +152,13 @@ export default function ChatPage() {
 
   // Initial scroll to bottom when messages first load
   useEffect(() => {
-    if (messages.length > 0 && isInitialLoadRef.current && !hasScrolledToBottomRef.current) {
+    if (
+      messages.length > 0 &&
+      isInitialLoadRef.current &&
+      !hasScrolledToBottomRef.current
+    ) {
       const container = messagesContainerRef.current;
-      
+
       if (container) {
         // Use requestAnimationFrame to ensure DOM is ready
         const scrollToBottom = () => {
@@ -167,12 +197,16 @@ export default function ChatPage() {
 
     // Check if there are new messages
     const hasNewMessages = messages.length > prevMessageCountRef.current;
-    
+
     // Only auto-scroll if:
     // 1. There are new messages AND
     // 2. User is at the bottom (or hasn't scrolled up)
     // 3. It's not the initial load (handled separately)
-    if (hasNewMessages && (isAtBottom || !userHasScrolled) && !isInitialLoadRef.current) {
+    if (
+      hasNewMessages &&
+      (isAtBottom || !userHasScrolled) &&
+      !isInitialLoadRef.current
+    ) {
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
       }, 100);
@@ -196,15 +230,15 @@ export default function ChatPage() {
       scrollTimeout = setTimeout(() => {
         const { scrollTop, scrollHeight, clientHeight } = container;
         const isAtBottom = scrollHeight - scrollTop - clientHeight < 100;
-        
+
         // Update scroll state based on position
         setUserHasScrolled(!isAtBottom);
       }, 150);
     };
 
-    container.addEventListener('scroll', handleScroll);
+    container.addEventListener("scroll", handleScroll);
     return () => {
-      container.removeEventListener('scroll', handleScroll);
+      container.removeEventListener("scroll", handleScroll);
       if (scrollTimeout) clearTimeout(scrollTimeout);
     };
   }, []);
@@ -483,10 +517,34 @@ export default function ChatPage() {
         </div>
 
         {/* Messages Area */}
-        <div 
+        <div
           ref={messagesContainerRef}
           className="flex-1 bg-gray-900/30 backdrop-blur-xl border-x border-white/10 ring-1 ring-white/20 shadow-2xl overflow-y-auto p-6 space-y-4"
         >
+          {/* Room Connection Notification */}
+          {showRoomNotification && (
+            <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 animate-slide-down">
+              <div className="bg-green-500/90 backdrop-blur-sm text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+                <span className="font-medium">
+                  You are now connected to the room
+                </span>
+              </div>
+            </div>
+          )}
+
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <p className="text-gray-500">

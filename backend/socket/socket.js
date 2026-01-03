@@ -1,6 +1,6 @@
-import { Server } from 'socket.io';
-import jwt from 'jsonwebtoken';
-import User from '../models/userModule.js';
+import { Server } from "socket.io";
+import jwt from "jsonwebtoken";
+import User from "../models/userModule.js";
 
 let io;
 
@@ -12,8 +12,8 @@ export const initializeSocket = (server) => {
   // CORS Configuration - Support multiple origins
   const allowedOrigins = [
     process.env.CLIENT_URL,
-    'http://localhost:3000',
-    'http://localhost:3001',
+    "http://localhost:3000",
+    "http://localhost:3001",
   ].filter(Boolean);
 
   io = new Server(server, {
@@ -21,19 +21,19 @@ export const initializeSocket = (server) => {
       origin: function (origin, callback) {
         // Allow requests with no origin (like mobile apps)
         if (!origin) return callback(null, true);
-        
+
         // Check if origin is in allowed list or matches Vercel preview pattern
-        if (allowedOrigins.includes(origin) || origin.includes('.vercel.app')) {
+        if (allowedOrigins.includes(origin) || origin.includes(".vercel.app")) {
           callback(null, true);
         } else {
           console.warn(`Socket.IO CORS blocked origin: ${origin}`);
-          callback(new Error('Not allowed by CORS'));
+          callback(new Error("Not allowed by CORS"));
         }
       },
-      methods: ['GET', 'POST'],
+      methods: ["GET", "POST"],
       credentials: true,
     },
-    transports: ['websocket', 'polling'],
+    transports: ["websocket", "polling"],
   });
 
   // Authentication middleware
@@ -42,7 +42,7 @@ export const initializeSocket = (server) => {
       const token = socket.handshake.auth.token;
 
       if (!token) {
-        return next(new Error('Authentication error: No token provided'));
+        return next(new Error("Authentication error: No token provided"));
       }
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -51,26 +51,26 @@ export const initializeSocket = (server) => {
 
       // Update user status to online
       await User.findByIdAndUpdate(decoded.userId, {
-        status: 'online',
+        status: "online",
         lastSeen: new Date(),
       });
 
       next();
     } catch (error) {
-      console.error('Socket authentication error:', error.message);
-      next(new Error('Authentication error: Invalid token'));
+      console.error("Socket authentication error:", error.message);
+      next(new Error("Authentication error: Invalid token"));
     }
   });
 
   // Connection handler
-  io.on('connection', (socket) => {
+  io.on("connection", (socket) => {
     console.log(`✅ User connected: ${socket.userId} (Socket: ${socket.id})`);
 
     // Join user's personal room
     socket.join(`user:${socket.userId}`);
 
     // Broadcast user online status
-    socket.broadcast.emit('user:online', {
+    socket.broadcast.emit("user:online", {
       userId: socket.userId,
       timestamp: new Date(),
     });
@@ -78,13 +78,30 @@ export const initializeSocket = (server) => {
     // ==================== CHAT EVENTS ====================
 
     // Join chat room
-    socket.on('chat:join', ({ chatId }) => {
+    socket.on("chat:join", ({ chatId }) => {
       socket.join(`chat:${chatId}`);
-      console.log(`User ${socket.userId} joined chat ${chatId}`);
+      console.log(
+        `✅ User ${socket.userId} (Socket: ${socket.id}) joined chat room: ${chatId}`
+      );
+
+      // Get room members count
+      const roomSize =
+        io.sockets.adapter.rooms.get(`chat:${chatId}`)?.size || 0;
+      console.log(`📊 Room ${chatId} now has ${roomSize} member(s)`);
+
+      // Send confirmation to the user
+      socket.emit("chat:joined", {
+        chatId,
+        socketId: socket.id,
+        userId: socket.userId,
+        roomSize: roomSize,
+        message: "You are now connected to the room",
+        timestamp: new Date(),
+      });
     });
 
     // Leave chat room
-    socket.on('chat:leave', ({ chatId }) => {
+    socket.on("chat:leave", ({ chatId }) => {
       socket.leave(`chat:${chatId}`);
       console.log(`User ${socket.userId} left chat ${chatId}`);
     });
@@ -92,7 +109,7 @@ export const initializeSocket = (server) => {
     // ==================== MESSAGE EVENTS ====================
 
     // Send message
-    socket.on('message:send', (data) => {
+    socket.on("message:send", (data) => {
       const { chatId, receiverId, content, type, timestamp } = data;
 
       const messageData = {
@@ -103,31 +120,31 @@ export const initializeSocket = (server) => {
         content,
         type,
         timestamp: timestamp || new Date(),
-        status: 'sent',
+        status: "sent",
       };
 
       // Send to chat room
-      io.to(`chat:${chatId}`).emit('message:receive', messageData);
+      io.to(`chat:${chatId}`).emit("message:receive", messageData);
 
       // Send to receiver's personal room
       if (receiverId) {
-        io.to(`user:${receiverId}`).emit('message:receive', messageData);
+        io.to(`user:${receiverId}`).emit("message:receive", messageData);
       }
 
       console.log(`Message sent in chat ${chatId}`);
     });
 
     // Message delivered
-    socket.on('message:delivered', ({ messageId }) => {
-      socket.broadcast.emit('message:delivered', {
+    socket.on("message:delivered", ({ messageId }) => {
+      socket.broadcast.emit("message:delivered", {
         messageId,
         deliveredAt: new Date(),
       });
     });
 
     // Message read
-    socket.on('message:read', ({ messageId }) => {
-      socket.broadcast.emit('message:read', {
+    socket.on("message:read", ({ messageId }) => {
+      socket.broadcast.emit("message:read", {
         messageId,
         readAt: new Date(),
       });
@@ -136,16 +153,16 @@ export const initializeSocket = (server) => {
     // ==================== TYPING EVENTS ====================
 
     // User typing
-    socket.on('user:typing', ({ chatId }) => {
-      socket.to(`chat:${chatId}`).emit('user:typing', {
+    socket.on("user:typing", ({ chatId }) => {
+      socket.to(`chat:${chatId}`).emit("user:typing", {
         userId: socket.userId,
         chatId,
       });
     });
 
     // User stopped typing
-    socket.on('user:stop_typing', ({ chatId }) => {
-      socket.to(`chat:${chatId}`).emit('user:stop_typing', {
+    socket.on("user:stop_typing", ({ chatId }) => {
+      socket.to(`chat:${chatId}`).emit("user:stop_typing", {
         userId: socket.userId,
         chatId,
       });
@@ -154,12 +171,12 @@ export const initializeSocket = (server) => {
     // ==================== GROUP EVENTS ====================
 
     // Create group
-    socket.on('group:create', (data) => {
+    socket.on("group:create", (data) => {
       const { groupId, name, members } = data;
 
       // Notify all members
       members.forEach((memberId) => {
-        io.to(`user:${memberId}`).emit('group:create', {
+        io.to(`user:${memberId}`).emit("group:create", {
           groupId,
           name,
           members,
@@ -172,8 +189,8 @@ export const initializeSocket = (server) => {
     });
 
     // Add member to group
-    socket.on('group:member:add', ({ groupId, userId }) => {
-      io.to(`user:${userId}`).emit('group:member:add', {
+    socket.on("group:member:add", ({ groupId, userId }) => {
+      io.to(`user:${userId}`).emit("group:member:add", {
         groupId,
         userId,
         addedBy: socket.userId,
@@ -182,8 +199,8 @@ export const initializeSocket = (server) => {
     });
 
     // Remove member from group
-    socket.on('group:member:remove', ({ groupId, userId }) => {
-      io.to(`user:${userId}`).emit('group:member:remove', {
+    socket.on("group:member:remove", ({ groupId, userId }) => {
+      io.to(`user:${userId}`).emit("group:member:remove", {
         groupId,
         userId,
         removedBy: socket.userId,
@@ -194,10 +211,10 @@ export const initializeSocket = (server) => {
     // ==================== CALL EVENTS ====================
 
     // Initiate call
-    socket.on('call:initiate', (data) => {
+    socket.on("call:initiate", (data) => {
       const { receiverId, callType, callId } = data;
 
-      io.to(`user:${receiverId}`).emit('call:initiate', {
+      io.to(`user:${receiverId}`).emit("call:initiate", {
         callId,
         callerId: socket.userId,
         callerName: data.callerName,
@@ -209,8 +226,8 @@ export const initializeSocket = (server) => {
     });
 
     // Accept call
-    socket.on('call:accept', ({ callId, callerId }) => {
-      io.to(`user:${callerId}`).emit('call:accept', {
+    socket.on("call:accept", ({ callId, callerId }) => {
+      io.to(`user:${callerId}`).emit("call:accept", {
         callId,
         acceptedBy: socket.userId,
         timestamp: new Date(),
@@ -218,8 +235,8 @@ export const initializeSocket = (server) => {
     });
 
     // Reject call
-    socket.on('call:reject', ({ callId, callerId }) => {
-      io.to(`user:${callerId}`).emit('call:reject', {
+    socket.on("call:reject", ({ callId, callerId }) => {
+      io.to(`user:${callerId}`).emit("call:reject", {
         callId,
         rejectedBy: socket.userId,
         timestamp: new Date(),
@@ -227,8 +244,8 @@ export const initializeSocket = (server) => {
     });
 
     // End call
-    socket.on('call:end', ({ callId, receiverId }) => {
-      io.to(`user:${receiverId}`).emit('call:end', {
+    socket.on("call:end", ({ callId, receiverId }) => {
+      io.to(`user:${receiverId}`).emit("call:end", {
         callId,
         endedBy: socket.userId,
         timestamp: new Date(),
@@ -236,22 +253,22 @@ export const initializeSocket = (server) => {
     });
 
     // WebRTC signaling
-    socket.on('call:offer', ({ receiverId, offer }) => {
-      io.to(`user:${receiverId}`).emit('call:offer', {
+    socket.on("call:offer", ({ receiverId, offer }) => {
+      io.to(`user:${receiverId}`).emit("call:offer", {
         senderId: socket.userId,
         offer,
       });
     });
 
-    socket.on('call:answer', ({ callerId, answer }) => {
-      io.to(`user:${callerId}`).emit('call:answer', {
+    socket.on("call:answer", ({ callerId, answer }) => {
+      io.to(`user:${callerId}`).emit("call:answer", {
         senderId: socket.userId,
         answer,
       });
     });
 
-    socket.on('call:ice_candidate', ({ receiverId, candidate }) => {
-      io.to(`user:${receiverId}`).emit('call:ice_candidate', {
+    socket.on("call:ice_candidate", ({ receiverId, candidate }) => {
+      io.to(`user:${receiverId}`).emit("call:ice_candidate", {
         senderId: socket.userId,
         candidate,
       });
@@ -259,39 +276,41 @@ export const initializeSocket = (server) => {
 
     // ==================== NOTIFICATION EVENTS ====================
 
-    socket.on('notification:send', ({ userId, notification }) => {
-      io.to(`user:${userId}`).emit('notification:new', notification);
+    socket.on("notification:send", ({ userId, notification }) => {
+      io.to(`user:${userId}`).emit("notification:new", notification);
     });
 
     // ==================== DISCONNECT ====================
 
-    socket.on('disconnect', async () => {
-      console.log(`❌ User disconnected: ${socket.userId} (Socket: ${socket.id})`);
+    socket.on("disconnect", async () => {
+      console.log(
+        `❌ User disconnected: ${socket.userId} (Socket: ${socket.id})`
+      );
 
       try {
         // Update user status to offline
         await User.findByIdAndUpdate(socket.userId, {
-          status: 'offline',
+          status: "offline",
           lastSeen: new Date(),
         });
 
         // Broadcast user offline status
-        socket.broadcast.emit('user:offline', {
+        socket.broadcast.emit("user:offline", {
           userId: socket.userId,
           timestamp: new Date(),
         });
       } catch (error) {
-        console.error('Error updating user status on disconnect:', error);
+        console.error("Error updating user status on disconnect:", error);
       }
     });
 
     // Error handling
-    socket.on('error', (error) => {
-      console.error('Socket error:', error);
+    socket.on("error", (error) => {
+      console.error("Socket error:", error);
     });
   });
 
-  console.log('✅ Socket.IO server initialized');
+  console.log("✅ Socket.IO server initialized");
   return io;
 };
 
@@ -301,7 +320,7 @@ export const initializeSocket = (server) => {
  */
 export const getIO = () => {
   if (!io) {
-    throw new Error('Socket.IO not initialized');
+    throw new Error("Socket.IO not initialized");
   }
   return io;
 };
