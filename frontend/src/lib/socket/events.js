@@ -4,6 +4,11 @@
  */
 
 import { SOCKET_ACTION_TYPES } from "../../config/store/action/socketAction";
+import { 
+  addMessageFromSocket, 
+  updateMessageFromSocket, 
+  deleteMessageFromSocket 
+} from "../../config/store/reducer/messageReducer";
 
 // ==================== EVENT NAMES ====================
 
@@ -120,40 +125,34 @@ export const setupSocketListeners = (socket, dispatch) => {
 
   // Message Events
   socket.on(SOCKET_EVENTS.MESSAGE_RECEIVE, (data) => {
-    // Dispatch to socket reducer
+    // Dispatch to socket reducer for tracking
     dispatch({ type: "MESSAGE_RECEIVED", payload: data });
-    // Dispatch to message reducer to add the message
-    dispatch({ type: "message/addMessageFromSocket", payload: data });
+    // Dispatch to message reducer using Redux Toolkit slice action
+    dispatch(addMessageFromSocket(data));
   });
 
   socket.on(SOCKET_EVENTS.MESSAGE_DELIVERED, (data) => {
     dispatch({ type: "MESSAGE_DELIVERED", payload: data });
     // Update message status in message reducer
-    dispatch({
-      type: "message/updateMessageFromSocket",
-      payload: { ...data, status: "delivered" },
-    });
+    dispatch(updateMessageFromSocket({ ...data, status: "delivered" }));
   });
 
   socket.on(SOCKET_EVENTS.MESSAGE_READ, (data) => {
     dispatch({ type: "MESSAGE_READ", payload: data });
     // Update message status in message reducer
-    dispatch({
-      type: "message/updateMessageFromSocket",
-      payload: data,
-    });
+    dispatch(updateMessageFromSocket(data));
   });
 
   socket.on(SOCKET_EVENTS.MESSAGE_DELETE, (data) => {
     dispatch({ type: "MESSAGE_DELETED", payload: data });
     // Remove message from message reducer
-    dispatch({ type: "message/deleteMessageFromSocket", payload: data });
+    dispatch(deleteMessageFromSocket(data));
   });
 
   socket.on(SOCKET_EVENTS.MESSAGE_EDIT, (data) => {
     dispatch({ type: "MESSAGE_EDITED", payload: data });
     // Update message in message reducer
-    dispatch({ type: "message/updateMessageFromSocket", payload: data });
+    dispatch(updateMessageFromSocket(data));
   });
 
   // Chat Events

@@ -48,7 +48,11 @@ const messageSlice = createSlice({
     // Add message from socket (real-time)
     addMessageFromSocket: (state, action) => {
       const payload = action.payload;
-      console.log("📨 Socket message received:", payload);
+      
+      // Only log in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log("📨 Socket message received:", payload);
+      }
       
       // Handle different payload structures
       // Backend sends: { chatId, message }
@@ -67,20 +71,28 @@ const messageSlice = createSlice({
         state.messagesByChat[normalizedChatId] = [];
       }
 
-      // Check if message already exists
+      // Optimized: Check if message already exists using message ID
+      const messageId = message._id?.toString();
+      if (!messageId) {
+        console.warn("⚠️ Message has no ID, skipping");
+        return;
+      }
+
       const exists = state.messagesByChat[normalizedChatId].some(
-        (msg) => msg._id?.toString() === message._id?.toString()
+        (msg) => msg._id?.toString() === messageId
       );
 
       if (!exists) {
-        console.log(`✅ Adding new message to chat ${normalizedChatId}`);
         // Create a new array to ensure React detects the change
         state.messagesByChat[normalizedChatId] = [
           ...state.messagesByChat[normalizedChatId],
           message
         ];
-      } else {
-        console.log(`⚠️ Message already exists in chat ${normalizedChatId}`);
+        
+        // Only log in development
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`✅ Added message to chat ${normalizedChatId}`);
+        }
       }
     },
 
