@@ -1,12 +1,22 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { clientServer } from "@/config";
 import { connectSocket, disconnectSocketAction } from "./socketAction";
+import { getDeviceInfo } from "@/utils/deviceFingerprint";
 
 export const registerUser = createAsyncThunk(
   "auth/register",
   async (user, thunkAPI) => {
     try {
-      const response = await clientServer.post("/api/auth/register", user);
+      // Get device information
+      const deviceInfo = getDeviceInfo();
+      
+      // Include device info in registration
+      const registrationData = {
+        ...user,
+        ...deviceInfo,
+      };
+      
+      const response = await clientServer.post("/api/auth/register", registrationData);
       if (response.data.token) {
         localStorage.setItem("token", response.data.token);
         localStorage.setItem("user", JSON.stringify(response.data.user));
@@ -25,7 +35,16 @@ export const loginUser = createAsyncThunk(
   "auth/login",
   async (credentials, thunkAPI) => {
     try {
-      const response = await clientServer.post("/api/auth/login", credentials);
+      // Get device information
+      const deviceInfo = getDeviceInfo();
+      
+      // Include device info in login
+      const loginData = {
+        ...credentials,
+        ...deviceInfo,
+      };
+      
+      const response = await clientServer.post("/api/auth/login", loginData);
       if (response.data.token) {
         localStorage.setItem("token", response.data.token);
         localStorage.setItem("user", JSON.stringify(response.data.user));
@@ -45,18 +64,25 @@ export const logoutUser = createAsyncThunk(
   async (_, thunkAPI) => {
     try {
       const token = localStorage.getItem("token");
+      const deviceInfo = getDeviceInfo();
+      
       await clientServer.post(
         "/api/auth/logout",
-        {},
+        { deviceId: deviceInfo.deviceId },
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
+      
+      // Clear all auth data
       localStorage.removeItem("token");
       localStorage.removeItem("user");
+      // Note: We keep deviceId for next login
+      
       thunkAPI.dispatch(disconnectSocketAction());
       return null;
     } catch (error) {
+      // Even if logout fails on backend, clear local data
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       thunkAPI.dispatch(disconnectSocketAction());
