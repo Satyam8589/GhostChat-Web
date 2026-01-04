@@ -33,14 +33,43 @@ export const initializeSocket = (token) => {
   }
 
   // Create new socket instance
-  const SOCKET_URL =
-    process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000";
+  // Automatically determine the socket URL based on environment
+  const getSocketURL = () => {
+    // If explicitly set, use it
+    if (process.env.NEXT_PUBLIC_SOCKET_URL) {
+      return process.env.NEXT_PUBLIC_SOCKET_URL;
+    }
+
+    // In production, try to infer from window location
+    if (typeof window !== "undefined") {
+      const protocol = window.location.protocol === "https:" ? "https:" : "http:";
+      const hostname = window.location.hostname;
+      
+      // If on localhost, use port 5000
+      if (hostname === "localhost" || hostname === "127.0.0.1") {
+        return "http://localhost:5000";
+      }
+      
+      // For deployed frontend, assume backend is on same domain
+      // You can customize this based on your deployment setup
+      return `${protocol}//${hostname}`;
+    }
+
+    // Fallback for SSR
+    return "http://localhost:5000";
+  };
+
+  const SOCKET_URL = getSocketURL();
 
   socket = io(SOCKET_URL, {
     ...SOCKET_CONFIG,
     auth: {
       token: token,
     },
+    // Force polling first in production for better compatibility
+    transports: process.env.NODE_ENV === "production" 
+      ? ["polling", "websocket"] 
+      : ["websocket", "polling"],
   });
 
   // Connection event handlers

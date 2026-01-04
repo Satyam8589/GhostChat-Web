@@ -41,13 +41,24 @@ app.use(
       // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin) return callback(null, true);
       
-      // Check if origin is in allowed list or matches Vercel preview pattern
-      if (allowedOrigins.includes(origin) || origin.includes('.vercel.app')) {
-        callback(null, true);
-      } else {
-        console.warn(`CORS blocked origin: ${origin}`);
-        callback(new Error('Not allowed by CORS'));
+      // Check if origin is in allowed list
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
       }
+      
+      // Allow Vercel preview and production deployments
+      if (origin.includes('.vercel.app')) {
+        return callback(null, true);
+      }
+      
+      // Allow any HTTPS origin in production
+      if (process.env.NODE_ENV === 'production' && origin.startsWith('https://')) {
+        console.log(`✅ Allowing HTTPS origin: ${origin}`);
+        return callback(null, true);
+      }
+      
+      console.warn(`❌ CORS blocked origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],

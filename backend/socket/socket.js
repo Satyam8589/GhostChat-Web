@@ -19,21 +19,38 @@ export const initializeSocket = (server) => {
   io = new Server(server, {
     cors: {
       origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps)
+        // Allow requests with no origin (like mobile apps or Postman)
         if (!origin) return callback(null, true);
-
-        // Check if origin is in allowed list or matches Vercel preview pattern
-        if (allowedOrigins.includes(origin) || origin.includes(".vercel.app")) {
-          callback(null, true);
-        } else {
-          console.warn(`Socket.IO CORS blocked origin: ${origin}`);
-          callback(new Error("Not allowed by CORS"));
+        
+        // Check if origin is in allowed list
+        if (allowedOrigins.includes(origin)) {
+          return callback(null, true);
         }
+        
+        // Allow Vercel preview and production deployments
+        if (origin.includes(".vercel.app")) {
+          return callback(null, true);
+        }
+        
+        // Allow any HTTPS origin in production (you can restrict this further)
+        if (process.env.NODE_ENV === "production" && origin.startsWith("https://")) {
+          console.log(`✅ Allowing HTTPS origin: ${origin}`);
+          return callback(null, true);
+        }
+        
+        console.warn(`❌ CORS blocked origin: ${origin}`);
+        callback(new Error("Not allowed by CORS"));
       },
       methods: ["GET", "POST"],
       credentials: true,
     },
-    transports: ["websocket", "polling"],
+    // Allow both transports, with polling first for better compatibility
+    transports: ["polling", "websocket"],
+    // Increase timeouts for deployed environments
+    pingTimeout: 60000,
+    pingInterval: 25000,
+    // Allow upgrades from polling to websocket
+    allowUpgrades: true,
   });
 
   // Authentication middleware
