@@ -49,10 +49,8 @@ const messageSlice = createSlice({
     addMessageFromSocket: (state, action) => {
       const payload = action.payload;
       
-      // Only log in development
-      if (process.env.NODE_ENV === 'development') {
-        console.log("📨 Socket message received:", payload);
-      }
+      // ALWAYS log for debugging (even in production)
+      console.log("📨 Socket message received:", payload);
       
       // Handle different payload structures
       // Backend sends: { chatId, message }
@@ -89,10 +87,10 @@ const messageSlice = createSlice({
           message
         ];
         
-        // Only log in development
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`✅ Added message to chat ${normalizedChatId}`);
-        }
+        // ALWAYS log for debugging
+        console.log(`✅ Added message to chat ${normalizedChatId}`);
+      } else {
+        console.log(`⚠️ Message already exists, not adding again`);
       }
     },
 

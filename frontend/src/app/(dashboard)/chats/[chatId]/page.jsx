@@ -154,20 +154,30 @@ export default function ChatPage() {
   const { realtimeMessages } = useSelector((state) => state.socket);
   
   useEffect(() => {
+    console.log("🔄 Real-time messages changed:", realtimeMessages?.length || 0, "messages");
+    
     // Check if there's a new message for this chat
     if (realtimeMessages && realtimeMessages.length > 0) {
       const latestMessage = realtimeMessages[0]; // Most recent message
+      console.log("📬 Latest message:", latestMessage);
+      console.log("📍 Current chatId:", chatId);
+      console.log("📍 Message chatId:", latestMessage.chatId);
+      console.log("📍 Message chat:", latestMessage.message?.chat);
       
       // Check if message is for current chat
       if (latestMessage.chatId === chatId || latestMessage.message?.chat === chatId) {
-        console.log("📨 Real-time message received for this chat:", latestMessage);
+        console.log("✅ Message is for this chat! Adding to store...");
         
         // Add to message reducer using the action
         dispatch({ 
           type: "message/addMessageFromSocket", 
           payload: latestMessage 
         });
+      } else {
+        console.log("⚠️ Message is for different chat, ignoring");
       }
+    } else {
+      console.log("ℹ️ No real-time messages yet");
     }
   }, [realtimeMessages, chatId, dispatch]);
 
