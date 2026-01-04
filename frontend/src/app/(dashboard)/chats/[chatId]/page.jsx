@@ -63,7 +63,9 @@ export default function ChatPage() {
   const currentChat = chats.find(
     (chat) => chat._id?.toString() === chatId?.toString()
   );
-  const messages = messagesByChat[chatId] || [];
+  // Normalize chatId to string to match reducer normalization
+  const normalizedChatId = chatId?.toString();
+  const messages = messagesByChat[normalizedChatId] || [];
 
   // Close emoji picker when clicking outside
   useEffect(() => {

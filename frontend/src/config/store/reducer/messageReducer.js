@@ -48,26 +48,39 @@ const messageSlice = createSlice({
     // Add message from socket (real-time)
     addMessageFromSocket: (state, action) => {
       const payload = action.payload;
+      console.log("📨 Socket message received:", payload);
+      
       // Handle different payload structures
+      // Backend sends: { chatId, message }
       const message = payload.message || payload;
-      const chatId = payload.chatId || message.chat || message.chatId;
+      const chatId = payload.chatId || message.chat?._id || message.chat || message.chatId;
 
       if (!chatId) {
-        console.error("Cannot add message: chatId is missing", payload);
+        console.error("❌ Cannot add message: chatId is missing", payload);
         return;
       }
 
-      if (!state.messagesByChat[chatId]) {
-        state.messagesByChat[chatId] = [];
+      // Normalize chatId to string for consistent comparison
+      const normalizedChatId = chatId.toString();
+
+      if (!state.messagesByChat[normalizedChatId]) {
+        state.messagesByChat[normalizedChatId] = [];
       }
 
       // Check if message already exists
-      const exists = state.messagesByChat[chatId].some(
-        (msg) => msg._id === message._id
+      const exists = state.messagesByChat[normalizedChatId].some(
+        (msg) => msg._id?.toString() === message._id?.toString()
       );
 
       if (!exists) {
-        state.messagesByChat[chatId].push(message);
+        console.log(`✅ Adding new message to chat ${normalizedChatId}`);
+        // Create a new array to ensure React detects the change
+        state.messagesByChat[normalizedChatId] = [
+          ...state.messagesByChat[normalizedChatId],
+          message
+        ];
+      } else {
+        console.log(`⚠️ Message already exists in chat ${normalizedChatId}`);
       }
     },
 
@@ -136,7 +149,12 @@ const messageSlice = createSlice({
         state.error = null;
 
         const message = action.payload.data || action.payload.message;
-        const chatId = message.chat;
+        const chatId = message.chat?.toString() || message.chat;
+
+        if (!chatId) {
+          console.error("❌ Cannot add sent message: chatId is missing");
+          return;
+        }
 
         if (!state.messagesByChat[chatId]) {
           state.messagesByChat[chatId] = [];
@@ -144,10 +162,13 @@ const messageSlice = createSlice({
 
         // Add message if it doesn't exist
         const exists = state.messagesByChat[chatId].some(
-          (msg) => msg._id === message._id
+          (msg) => msg._id?.toString() === message._id?.toString()
         );
         if (!exists) {
-          state.messagesByChat[chatId].push(message);
+          state.messagesByChat[chatId] = [
+            ...state.messagesByChat[chatId],
+            message
+          ];
         }
       })
       .addCase(sendMessage.rejected, (state, action) => {
