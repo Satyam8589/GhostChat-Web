@@ -123,36 +123,28 @@ export const setupSocketListeners = (socket, dispatch) => {
     dispatch({ type: "USER_STOP_TYPING", payload: data });
   });
 
-  // Message Events
+  // Message Events - Using EXACT same pattern as typing (which works!)
   socket.on(SOCKET_EVENTS.MESSAGE_RECEIVE, (data) => {
-    // Dispatch to socket reducer for tracking
+    console.log("🔥 SOCKET EVENT: message:receive", data);
+    
+    // Dispatch simple action (same as typing)
     dispatch({ type: "MESSAGE_RECEIVED", payload: data });
-    // Dispatch to message reducer using Redux Toolkit slice action
-    dispatch(addMessageFromSocket(data));
   });
 
   socket.on(SOCKET_EVENTS.MESSAGE_DELIVERED, (data) => {
     dispatch({ type: "MESSAGE_DELIVERED", payload: data });
-    // Update message status in message reducer
-    dispatch(updateMessageFromSocket({ ...data, status: "delivered" }));
   });
 
   socket.on(SOCKET_EVENTS.MESSAGE_READ, (data) => {
     dispatch({ type: "MESSAGE_READ", payload: data });
-    // Update message status in message reducer
-    dispatch(updateMessageFromSocket(data));
   });
 
   socket.on(SOCKET_EVENTS.MESSAGE_DELETE, (data) => {
     dispatch({ type: "MESSAGE_DELETED", payload: data });
-    // Remove message from message reducer
-    dispatch(deleteMessageFromSocket(data));
   });
 
   socket.on(SOCKET_EVENTS.MESSAGE_EDIT, (data) => {
     dispatch({ type: "MESSAGE_EDITED", payload: data });
-    // Update message in message reducer
-    dispatch(updateMessageFromSocket(data));
   });
 
   // Chat Events

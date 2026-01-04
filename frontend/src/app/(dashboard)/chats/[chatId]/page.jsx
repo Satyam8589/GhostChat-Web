@@ -134,11 +134,14 @@ export default function ChatPage() {
 
       socket.on("chat:joined", handleRoomJoined);
 
-      // Cleanup: leave chat room on unmount
+      // Cleanup: Only remove event listener
+      // DON'T leave room - users need to stay in room for real-time messages
       return () => {
-        console.log(`📤 Leaving chat room: ${chatId}`);
+        console.log(`🧹 Cleaning up event listeners for room: ${chatId}`);
         socket.off("chat:joined", handleRoomJoined);
-        dispatch(leaveChatRoom(chatId));
+        // ✅ REMOVED: dispatch(leaveChatRoom(chatId));
+        // Users stay in room even after component unmount
+        // This allows real-time messages to be delivered
       };
     } else {
       console.warn(
@@ -146,6 +149,28 @@ export default function ChatPage() {
       );
     }
   }, [chatId, socket, connected, dispatch]);
+
+  // Listen for real-time messages (same pattern as typing!)
+  const { realtimeMessages } = useSelector((state) => state.socket);
+  
+  useEffect(() => {
+    // Check if there's a new message for this chat
+    if (realtimeMessages && realtimeMessages.length > 0) {
+      const latestMessage = realtimeMessages[0]; // Most recent message
+      
+      // Check if message is for current chat
+      if (latestMessage.chatId === chatId || latestMessage.message?.chat === chatId) {
+        console.log("📨 Real-time message received for this chat:", latestMessage);
+        
+        // Add to message reducer using the action
+        dispatch({ 
+          type: "message/addMessageFromSocket", 
+          payload: latestMessage 
+        });
+      }
+    }
+  }, [realtimeMessages, chatId, dispatch]);
+
 
   // Track previous message count to detect new messages
   const prevMessageCountRef = useRef(messages.length);

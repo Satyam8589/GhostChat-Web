@@ -362,7 +362,12 @@ export const emitToUser = (userId, event, data) => {
  */
 export const emitToChat = (chatId, event, data) => {
   if (io) {
+    console.log(`🔥 EMITTING TO CHAT: Room=chat:${chatId}, Event=${event}`);
+    console.log(`📊 Data:`, JSON.stringify(data).substring(0, 200) + '...');
     io.to(`chat:${chatId}`).emit(event, data);
+    console.log(`✅ Emission complete`);
+  } else {
+    console.error(`❌ Socket.IO not initialized! Cannot emit to chat:${chatId}`);
   }
 };
 
