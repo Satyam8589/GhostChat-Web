@@ -70,16 +70,38 @@ const messageSlice = createSlice({
         state.messagesByChat[normalizedChatId] = [];
       }
 
-      // Optimized: Check if message already exists using message ID
+      // Check if message already exists using message ID
       const messageId = message._id?.toString();
       if (!messageId) {
         console.warn("⚠️ Message has no ID, skipping");
         return;
       }
 
-      const exists = state.messagesByChat[normalizedChatId].some(
-        (msg) => msg._id?.toString() === messageId
-      );
+      // More thorough duplicate check - check by ID and also by content + timestamp
+      const messages = state.messagesByChat[normalizedChatId];
+      const exists = messages.some((msg) => {
+        const existingId = msg._id?.toString();
+        // Check exact ID match
+        if (existingId === messageId) {
+          return true;
+        }
+        // Check if it's the same message by content and sender (within 2 seconds)
+        const sameSender =
+          (msg.sender?._id || msg.sender)?.toString() ===
+          (message.sender?._id || message.sender)?.toString();
+        const sameContent = msg.encryptedContent === message.encryptedContent;
+        const createdAtDiff = Math.abs(
+          new Date(msg.createdAt).getTime() -
+            new Date(message.createdAt).getTime()
+        );
+        if (sameSender && sameContent && createdAtDiff < 2000) {
+          console.log(
+            "⚠️ Duplicate message detected by content/timestamp, skipping"
+          );
+          return true;
+        }
+        return false;
+      });
 
       if (!exists) {
         // Create a new array to ensure React detects the change
@@ -91,7 +113,9 @@ const messageSlice = createSlice({
         // ALWAYS log for debugging
         console.log(`✅ Added message to chat ${normalizedChatId}`);
       } else {
-        console.log(`⚠️ Message already exists, not adding again`);
+        console.log(
+          `⚠️ Message already exists (ID: ${messageId}), not adding again`
+        );
       }
     },
 
