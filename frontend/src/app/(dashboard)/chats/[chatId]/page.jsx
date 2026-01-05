@@ -647,7 +647,7 @@ export default function ChatPage() {
         <div className="absolute bottom-1/4 left-1/3 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-blob animation-delay-4000"></div>
       </div>
 
-      <div className="h-full max-w-7xl mx-auto w-full relative flex flex-col p-2 sm:p-4 pb-20 lg:pb-4">
+      <div className="h-full max-w-7xl mx-auto w-full relative flex flex-col p-2 sm:p-4 pb-24 lg:pb-4">
         {/* Chat Header - Fixed, not scrollable */}
         <div className="flex-shrink-0 bg-gray-900/50 backdrop-blur-xl rounded-t-2xl border border-white/10 ring-1 ring-white/20 shadow-2xl p-2 sm:p-4 relative overflow-visible z-50">
           <div className="flex items-center justify-between">

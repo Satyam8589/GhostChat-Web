@@ -175,12 +175,12 @@ const DashboardLayout = ({ children }) => {
 
       {/* Bottom Navigation Bar - Visible only on mobile */}
       <nav className="fixed bottom-0 left-0 right-0 md:hidden bg-[#0f1117] border-t border-gray-800/50 z-[100] shadow-2xl">
-        <div className="flex items-center justify-around py-3 px-2 safe-area-bottom">
+        <div className="flex items-center justify-around py-2 px-2 safe-area-bottom">
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-300 ${
+              className={`flex flex-col items-center gap-0.5 p-1.5 rounded-xl transition-all duration-300 ${
                 pathname.includes(item.href) ? "text-blue-400" : "text-gray-500"
               }`}
             >
@@ -189,7 +189,7 @@ const DashboardLayout = ({ children }) => {
               >
                 {item.icon}
               </div>
-              <span className="text-[10px] font-medium">{item.label}</span>
+              <span className="text-[9px] font-medium">{item.label}</span>
             </Link>
           ))}
         </div>
