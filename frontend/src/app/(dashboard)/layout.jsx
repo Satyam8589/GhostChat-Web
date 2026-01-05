@@ -93,7 +93,7 @@ const DashboardLayout = ({ children }) => {
   const pathname = usePathname();
   const router = useRouter();
   const dispatch = useDispatch();
-  const { user, isAuthenticated } = useSelector((state) => state.auth);
+  const { user, isAuthenticated, isInitialized } = useSelector((state) => state.auth);
   const { connected } = useSelector((state) => state.socket);
 
   // Use ref to track if socket has been initialized
@@ -115,12 +115,26 @@ const DashboardLayout = ({ children }) => {
     }
   }, [isAuthenticated, user, dispatch]); // ✅ NO pathname!
 
-  // Redirect to login if not authenticated
+  // Redirect to login if not authenticated - BUT ONLY AFTER INITIALIZATION
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (isInitialized && !isAuthenticated) {
       router.push("/login");
     }
-  }, [isAuthenticated, router]);
+  }, [isInitialized, isAuthenticated, router]);
+
+  // Show loading state while checking authentication
+  if (!isInitialized) {
+    return (
+      <div className="flex h-screen bg-[#0a0a0a] items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 animate-pulse">
+            <span className="text-white font-bold text-2xl">G</span>
+          </div>
+          <div className="text-gray-400 text-sm">Loading...</div>
+        </div>
+      </div>
+    );
+  }
 
   const navItems = [
     { icon: <DashboardIcon />, label: "Dashboard", href: "/dashboard" },

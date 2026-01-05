@@ -9,7 +9,7 @@ import { registerUser, clearError } from "@/config/store/action/authAction";
 export default function RegisterPage() {
   const router = useRouter();
   const dispatch = useDispatch();
-  const { loading, error, isAuthenticated } = useSelector(
+  const { loading, error, isAuthenticated, isInitialized } = useSelector(
     (state) => state.auth
   );
 
@@ -24,13 +24,12 @@ export default function RegisterPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
 
-  // Check if user is already logged in
+  // Check if user is already logged in - ONLY AFTER INITIALIZATION
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token || isAuthenticated) {
+    if (isInitialized && isAuthenticated) {
       router.push("/dashboard");
     }
-  }, [isAuthenticated, router]);
+  }, [isInitialized, isAuthenticated, router]);
 
   useEffect(() => {
     return () => {
@@ -87,6 +86,20 @@ export default function RegisterPage() {
     if (passwordStrength === 3) return "Good";
     return "Strong";
   };
+
+  // Show loading state while checking authentication
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-cyan-500 rounded-lg flex items-center justify-center animate-pulse">
+            <span className="text-3xl">👻</span>
+          </div>
+          <div className="text-gray-400 text-sm">Loading...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center px-4 py-8 relative overflow-hidden">

@@ -11,6 +11,7 @@ const initialState = {
   user: null,
   token: null,
   isAuthenticated: false,
+  isInitialized: false, // Track if we've checked localStorage
   loading: false,
   error: null,
 };
@@ -26,6 +27,10 @@ const authSlice = createSlice({
       state.user = action.payload.user;
       state.token = action.payload.token;
       state.isAuthenticated = true;
+      state.isInitialized = true; // Mark as initialized
+    },
+    setInitialized: (state) => {
+      state.isInitialized = true;
     },
     // Manual status update (for immediate UI update)
     updateStatus: (state, action) => {
@@ -123,6 +128,6 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError, setUserFromStorage, updateStatus } =
+export const { clearError, setUserFromStorage, setInitialized, updateStatus } =
   authSlice.actions;
 export default authSlice.reducer;

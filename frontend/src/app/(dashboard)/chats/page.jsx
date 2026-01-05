@@ -180,7 +180,8 @@ export default function ChatsPage() {
         <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-pink-500/10 rounded-full blur-3xl animate-blob animation-delay-2000"></div>
       </div>
 
-      <div className="h-full max-w-7xl mx-auto relative z-10 flex flex-col p-2 sm:p-4 pb-20 md:pb-4">{/* Error Message Banner */}
+      <div className="h-full max-w-7xl mx-auto relative z-10 flex flex-col p-2 sm:p-4 pb-20 md:pb-4">
+        {/* Error Message Banner */}
         {errorMessage && (
           <div className="mb-4 p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-400 text-sm flex items-center justify-between animate-slide-down">
             <span>{errorMessage}</span>
@@ -227,7 +228,8 @@ export default function ChatsPage() {
         {/* Main Container */}
         <div className="flex-1 min-h-0 bg-gray-900/50 backdrop-blur-xl rounded-2xl border border-white/10 ring-1 ring-white/20 shadow-2xl flex flex-col overflow-hidden">
           {/* Search and Filters */}
-          <div className="p-3 sm:p-4 border-b border-gray-800/50 flex-shrink-0">{/* Search Bar */}
+          <div className="p-3 sm:p-4 border-b border-gray-800/50 flex-shrink-0">
+            {/* Search Bar */}
             <div className="relative mb-4">
               <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
               <input

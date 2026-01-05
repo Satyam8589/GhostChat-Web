@@ -3,7 +3,7 @@
 import { Provider } from "react-redux";
 import { useEffect } from "react";
 import store from "@/config/store/store";
-import { setUserFromStorage } from "@/config/store/reducer/authReducer";
+import { setUserFromStorage, setInitialized } from "@/config/store/reducer/authReducer";
 
 function ReduxInitializer({ children }) {
   useEffect(() => {
@@ -20,7 +20,11 @@ function ReduxInitializer({ children }) {
         console.error("Error loading user from localStorage:", error);
         localStorage.removeItem("user");
         localStorage.removeItem("token");
+        store.dispatch(setInitialized());
       }
+    } else {
+      // No user in localStorage, mark as initialized
+      store.dispatch(setInitialized());
     }
   }, []);
 
