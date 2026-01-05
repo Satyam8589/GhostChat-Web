@@ -3,6 +3,12 @@
 import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchUserChats } from "@/config/store/action/chatAction";
+import { updateChatWithNewMessage } from "@/config/store/reducer/chatReducer";
+import {
+  addMessageFromSocket,
+  updateMessageFromSocket,
+} from "@/config/store/reducer/messageReducer";
+import { getSocket } from "@/lib/socket/socket";
 import Link from "next/link";
 import {
   FiMessageCircle,
@@ -21,6 +27,8 @@ export default function DashboardPage() {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
   const { chats } = useSelector((state) => state.chat);
+  const { connected } = useSelector((state) => state.socket);
+  const socket = getSocket();
   const [isPinned, setIsPinned] = useState(user?.isPinned || false);
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -48,6 +56,89 @@ export default function DashboardPage() {
   useEffect(() => {
     dispatch(fetchUserChats());
   }, [dispatch]);
+
+  // Join all chat rooms and listen for real-time updates
+  useEffect(() => {
+    if (socket && connected && chats.length > 0) {
+      console.log(`🎯 Dashboard: Joining all ${chats.length} chat rooms...`);
+
+      chats.forEach((chat) => {
+        if (chat._id) {
+          socket.emit("chat:join", { chatId: chat._id });
+          console.log(`✅ Dashboard joined room: chat:${chat._id}`);
+        }
+      });
+
+      // Listen for new messages on all chats
+      const handleNewMessage = (data) => {
+        console.log("📨 Dashboard: New message received:", data);
+
+        // Add message to Redux store
+        dispatch(addMessageFromSocket(data));
+
+        // Update chat metadata (last message, timestamp, unread count)
+        const messageObj = data.message || data;
+        const currentUserId = (user?.id || user?._id)?.toString();
+
+        dispatch(
+          updateChatWithNewMessage({
+            chatId: data.chatId,
+            message: messageObj,
+            currentUserId: currentUserId,
+          })
+        );
+
+        // DO NOT emit delivered status here - only the chat detail page should do that
+        // Being on the dashboard doesn't mean the user has seen the message
+      };
+
+      // Listen for message status updates
+      const handleMessageDelivered = (data) => {
+        console.log("✅ Dashboard: Message delivered:", data);
+        dispatch(
+          updateMessageFromSocket({
+            messageId: data.messageId,
+            chatId: data.chatId,
+            status: "delivered",
+            updates: { deliveredAt: data.deliveredAt },
+          })
+        );
+      };
+
+      const handleMessageRead = (data) => {
+        console.log("👁️ Dashboard: Message read:", data);
+        dispatch(
+          updateMessageFromSocket({
+            messageId: data.messageId,
+            chatId: data.chatId,
+            status: "read",
+            updates: { readAt: data.readAt },
+          })
+        );
+      };
+
+      socket.on("message:receive", handleNewMessage);
+      socket.on("message:status:delivered", handleMessageDelivered);
+      socket.on("message:status:read", handleMessageRead);
+
+      // Cleanup: leave all rooms when component unmounts
+      return () => {
+        console.log("🧹 Dashboard: Leaving all chat rooms...");
+        socket.off("message:receive", handleNewMessage);
+        socket.off("message:status:delivered", handleMessageDelivered);
+        socket.off("message:status:read", handleMessageRead);
+
+        chats.forEach((chat) => {
+          if (chat._id) {
+            socket.emit("chat:leave", { chatId: chat._id });
+            console.log(`👋 Dashboard left room: chat:${chat._id}`);
+          }
+        });
+      };
+    } else if (!connected && socket) {
+      console.log("⏳ Dashboard: Socket not connected yet, waiting...");
+    }
+  }, [socket, connected, chats, dispatch, user]);
 
   // Update time every second
   useEffect(() => {
@@ -332,9 +423,9 @@ export default function DashboardPage() {
             </div>
 
             {/* Bottom Row - Calendar & Notifications Side by Side */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 overflow-hidden min-h-0">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0">
               {/* Calendar Section */}
-              <div className="bg-gray-900/50 backdrop-blur-xl rounded-2xl border border-white/10 ring-1 ring-white/20 shadow-2xl p-3 flex flex-col overflow-hidden">
+              <div className="bg-gray-900/50 backdrop-blur-xl rounded-2xl border border-white/10 ring-1 ring-white/20 shadow-2xl p-3 flex flex-col">
                 <div className="flex items-center justify-between mb-2 flex-shrink-0">
                   <h2 className="text-lg font-bold text-white flex items-center gap-2">
                     <FiCalendar className="text-blue-400" />

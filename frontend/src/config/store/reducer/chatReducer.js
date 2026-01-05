@@ -76,6 +76,40 @@ const chatSlice = createSlice({
         state.chats.unshift(newChat);
       }
     },
+
+    // Update chat with new message (real-time)
+    updateChatWithNewMessage: (state, action) => {
+      const { chatId, message } = action.payload;
+      const chatIndex = state.chats.findIndex(
+        (chat) => chat._id?.toString() === chatId?.toString()
+      );
+
+      if (chatIndex !== -1) {
+        const chat = state.chats[chatIndex];
+
+        // Update last message and timestamp
+        const updatedChat = {
+          ...chat,
+          lastMessage: message,
+          lastMessageTime: message.createdAt || new Date().toISOString(),
+        };
+
+        // Increment unread count if message is from someone else
+        const currentUserId = action.payload.currentUserId;
+        const senderId = message.sender?._id || message.sender;
+
+        if (
+          currentUserId &&
+          senderId?.toString() !== currentUserId?.toString()
+        ) {
+          updatedChat.unreadCount = (chat.unreadCount || 0) + 1;
+        }
+
+        // Remove chat from current position and add to top
+        state.chats.splice(chatIndex, 1);
+        state.chats.unshift(updatedChat);
+      }
+    },
   },
 
   extraReducers: (builder) => {
@@ -303,6 +337,7 @@ export const {
   addChatToList,
   removeChatFromList,
   handleChatReceived,
+  updateChatWithNewMessage,
 } = chatSlice.actions;
 
 export default chatSlice.reducer;

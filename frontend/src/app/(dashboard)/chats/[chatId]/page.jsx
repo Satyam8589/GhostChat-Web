@@ -27,7 +27,10 @@ import {
   joinChatRoom,
   leaveChatRoom,
 } from "@/config/store/action/socketAction";
-import { addMessageFromSocket } from "@/config/store/reducer/messageReducer";
+import {
+  addMessageFromSocket,
+  updateMessageFromSocket,
+} from "@/config/store/reducer/messageReducer";
 import { getSocket } from "@/lib/socket/socket";
 
 export default function ChatPage() {
@@ -105,8 +108,13 @@ export default function ChatPage() {
       // Fetch messages on mount
       dispatch(fetchMessages(chatId));
 
-      // Mark messages as read when opening chat
-      dispatch(markMessagesAsRead(chatId));
+      // Mark messages as read when entering this specific chat
+      console.log("✅ Entered chat:", chatId, "- marking messages as read");
+      const timer = setTimeout(() => {
+        dispatch(markMessagesAsRead(chatId));
+      }, 500);
+
+      return () => clearTimeout(timer);
     }
   }, [chatId, dispatch, currentChat]);
 
@@ -153,7 +161,10 @@ export default function ChatPage() {
   useEffect(() => {
     if (!socket || !chatId) return;
 
-    console.log("🎧 Setting up DIRECT socket message listener for chat:", chatId);
+    console.log(
+      "🎧 Setting up DIRECT socket message listener for chat:",
+      chatId
+    );
 
     const handleDirectMessage = (data) => {
       try {
@@ -163,17 +174,17 @@ export default function ChatPage() {
         console.log("📦 Raw data:", data);
         console.log("📍 Message chatId:", data.chatId);
         console.log("📍 Current chatId:", chatId);
-        
+
         // Handle both formats: {message: {...}} and direct message object
         const messageObj = data.message || data;
-        
+
         // Only process if message is for this chat
         if (data.chatId === chatId || messageObj.chat === chatId) {
           console.log("✅ Message is for THIS chat! Adding directly...");
-          
+
           // Add message directly to Redux store
           dispatch(addMessageFromSocket(data));
-          
+
           console.log("✅ Message added to store via direct socket listener!");
         } else {
           console.log("⚠️ Message is for different chat, ignoring");
@@ -195,36 +206,82 @@ export default function ChatPage() {
     };
   }, [socket, chatId, dispatch]);
 
+  // Listen for message status updates (delivered/read) in real-time
+  useEffect(() => {
+    if (!socket || !chatId) return;
+
+    console.log(
+      "🎧 Setting up DIRECT message status listeners for chat:",
+      chatId
+    );
+
+    const handleMessageDelivered = (data) => {
+      console.log("✅ Message delivered (real-time):", data);
+      // Update message status in Redux store
+      dispatch(
+        updateMessageFromSocket({
+          messageId: data.messageId,
+          chatId: data.chatId,
+          status: "delivered",
+          updates: { deliveredAt: data.deliveredAt },
+        })
+      );
+    };
+
+    const handleMessageRead = (data) => {
+      console.log("👁️ Message read (real-time):", data);
+      // Update message status in Redux store
+      dispatch(
+        updateMessageFromSocket({
+          messageId: data.messageId,
+          chatId: data.chatId,
+          status: "read",
+          updates: { readAt: data.readAt },
+        })
+      );
+    };
+
+    // Listen for status update events directly on socket
+    socket.on("message:status:delivered", handleMessageDelivered);
+    socket.on("message:status:read", handleMessageRead);
+    console.log("✅ Message status listeners registered");
+
+    // Cleanup
+    return () => {
+      console.log("🧹 Removing message status listeners");
+      socket.off("message:status:delivered", handleMessageDelivered);
+      socket.off("message:status:read", handleMessageRead);
+    };
+  }, [socket, chatId, dispatch]);
+
   // Listen for real-time messages - use ref to track last processed message
   const { realtimeMessages } = useSelector((state) => state.socket);
   const lastProcessedMessageRef = useRef(null);
-  
+
   useEffect(() => {
     // Check if there's a new message that we haven't processed yet
     if (realtimeMessages && realtimeMessages.length > 0) {
       const latestMessage = realtimeMessages[0]; // Most recent message
       const messageId = latestMessage.message?._id || latestMessage._id;
-      
+
       // Only process if this is a new message we haven't seen before
       if (messageId && messageId !== lastProcessedMessageRef.current) {
         console.log("📬 New message received:", latestMessage);
         console.log("📍 Message chatId:", latestMessage.chatId);
         console.log("📍 Message chat:", latestMessage.message?.chat);
-        
+
         // ALWAYS add message to store, regardless of which chat is open
         // This ensures messages are stored even if user is on a different chat
         console.log("✅ Adding message to store via Redux action...");
         dispatch(addMessageFromSocket(latestMessage));
-        
+
         // Mark this message as processed
         lastProcessedMessageRef.current = messageId;
       }
     }
   }, [realtimeMessages, dispatch]);
 
-
-  // Track previous message count to detect new messages
-  const prevMessageCountRef = useRef(messages.length);
+  // Track refs for scroll behavior
   const isInitialLoadRef = useRef(true);
   const hasScrolledToBottomRef = useRef(false);
 
@@ -274,7 +331,8 @@ export default function ChatPage() {
     const isAtBottom = scrollHeight - scrollTop - clientHeight < 100;
 
     // Check if there are new messages
-    const hasNewMessages = messages.length > prevMessageCountRef.current;
+    const hasNewMessages =
+      messages.length > prevMessageCountForScrollRef.current;
 
     // Only auto-scroll if:
     // 1. There are new messages AND
@@ -291,7 +349,7 @@ export default function ChatPage() {
     }
 
     // Update previous message count
-    prevMessageCountRef.current = messages.length;
+    prevMessageCountForScrollRef.current = messages.length;
   }, [messages, userHasScrolled]);
 
   // Detect when user manually scrolls
@@ -321,19 +379,67 @@ export default function ChatPage() {
     };
   }, []);
 
-  // Mark messages as read when new messages arrive
+  // Track previous message count to mark new messages as read
+  const prevMessageCountRef = useRef(messages.length);
+
+  // Mark NEW messages as read when they arrive (only if chat is active and window is focused)
   useEffect(() => {
-    if (chatId && messages.length > 0) {
-      // Mark messages as read after a short delay to ensure they're visible
-      const timer = setTimeout(() => {
-        dispatch(markMessagesAsRead(chatId));
-      }, 500);
+    // CRITICAL: Only mark as read if this specific chat page is actually being viewed
+    // This prevents marking messages as read when just viewing the chats list
+    const isCurrentPathThisChat =
+      window.location.pathname === `/chats/${chatId}`;
 
-      return () => clearTimeout(timer);
+    // Check if there are new messages (count increased)
+    const hasNewMessages = messages.length > prevMessageCountRef.current;
+
+    // ONLY mark as read if:
+    // 1. User is on THIS specific chat page (not just /chats list)
+    // 2. There are new messages
+    // 3. Window is focused
+    // 4. Messages are from other users
+    if (
+      isCurrentPathThisChat &&
+      chatId &&
+      hasNewMessages &&
+      document.hasFocus()
+    ) {
+      // Only mark as read if there are unread messages from others
+      const newMessages = messages.slice(prevMessageCountRef.current);
+      const hasUnreadFromOthers = newMessages.some((msg) => {
+        const senderId = (msg.sender?._id || msg.sender)?.toString();
+        const myId = (user?.id || user?._id)?.toString();
+        return senderId !== myId;
+      });
+
+      if (hasUnreadFromOthers) {
+        console.log("📖 Marking NEW messages as read for chat:", chatId);
+        console.log("✅ Current path matches chat:", isCurrentPathThisChat);
+        const timer = setTimeout(() => {
+          dispatch(markMessagesAsRead(chatId));
+        }, 500);
+
+        // Update the ref
+        prevMessageCountRef.current = messages.length;
+
+        return () => clearTimeout(timer);
+      } else {
+        // Update the ref even if no unread messages
+        prevMessageCountRef.current = messages.length;
+      }
+    } else {
+      // Update the ref to current count
+      prevMessageCountRef.current = messages.length;
+
+      if (!isCurrentPathThisChat) {
+        console.log(
+          "⏸️ Not marking as read - user is not viewing this specific chat page"
+        );
+      }
     }
-  }, [messages, chatId, dispatch]);
+  }, [messages, chatId, dispatch, user]);
 
-  // Handle typing indicator
+  // Track previous message count to detect new messages for scrolling
+  const prevMessageCountForScrollRef = useRef(messages.length);
   const handleTyping = () => {
     if (!isUserTyping && socket && connected) {
       setIsUserTyping(true);
@@ -368,6 +474,27 @@ export default function ChatPage() {
 
       // Reset scroll flag so new message scrolls to bottom
       setUserHasScrolled(false);
+
+      // Create optimistic message to show immediately in UI
+      const optimisticMessage = {
+        _id: `temp-${Date.now()}`, // Temporary ID
+        chat: chatId,
+        sender: {
+          _id: user?._id || user?.id,
+          name: user?.name,
+          username: user?.username,
+          profilePicture: user?.profilePicture,
+        },
+        encryptedContent: messageText,
+        messageType: "text",
+        createdAt: new Date().toISOString(),
+        status: "sending", // Mark as sending
+        deliveredAt: null,
+        readBy: [],
+      };
+
+      // Add optimistic message to Redux store immediately
+      dispatch(addMessageFromSocket({ chatId, message: optimisticMessage }));
 
       // Send message through Redux
       await dispatch(

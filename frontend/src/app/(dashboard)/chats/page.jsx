@@ -11,6 +11,7 @@ import {
   toggleArchiveChat,
   deleteChat,
 } from "@/config/store/action/chatAction";
+import { updateChatWithNewMessage } from "@/config/store/reducer/chatReducer";
 import {
   FiSearch,
   FiPlus,
@@ -22,12 +23,19 @@ import {
   FiTrash2,
   FiX,
 } from "react-icons/fi";
+import { getSocket } from "@/lib/socket/socket";
+import {
+  addMessageFromSocket,
+  updateMessageFromSocket,
+} from "@/config/store/reducer/messageReducer";
 
 export default function ChatsPage() {
   const dispatch = useDispatch();
   const router = useRouter();
   const { chats, loading, error } = useSelector((state) => state.chat);
   const { user } = useSelector((state) => state.auth);
+  const { connected } = useSelector((state) => state.socket);
+  const socket = getSocket();
 
   // Sanitize message preview to prevent showing encrypted content
   const sanitizePreview = (text) => {
@@ -58,6 +66,89 @@ export default function ChatsPage() {
   useEffect(() => {
     dispatch(fetchUserChats());
   }, [dispatch]);
+
+  // Join all chat rooms when socket is connected and chats are loaded
+  useEffect(() => {
+    if (socket && connected && chats.length > 0) {
+      console.log(`🔌 Joining all ${chats.length} chat rooms...`);
+
+      chats.forEach((chat) => {
+        if (chat._id) {
+          socket.emit("chat:join", { chatId: chat._id });
+          console.log(`✅ Joined room: chat:${chat._id}`);
+        }
+      });
+
+      // Listen for new messages on all chats
+      const handleNewMessage = (data) => {
+        console.log("📨 New message received on chats page:", data);
+
+        // Add message to Redux store
+        dispatch(addMessageFromSocket(data));
+
+        // Update chat metadata (last message, timestamp, unread count)
+        const messageObj = data.message || data;
+        const currentUserId = (user?.id || user?._id)?.toString();
+
+        dispatch(
+          updateChatWithNewMessage({
+            chatId: data.chatId,
+            message: messageObj,
+            currentUserId: currentUserId,
+          })
+        );
+
+        // DO NOT emit delivered status here - only the chat detail page should do that
+        // Being on the chats list page doesn't mean the user has seen the message
+      };
+
+      // Listen for message status updates
+      const handleMessageDelivered = (data) => {
+        console.log("✅ Message delivered:", data);
+        dispatch(
+          updateMessageFromSocket({
+            messageId: data.messageId,
+            chatId: data.chatId,
+            status: "delivered",
+            updates: { deliveredAt: data.deliveredAt },
+          })
+        );
+      };
+
+      const handleMessageRead = (data) => {
+        console.log("👁️ Message read:", data);
+        dispatch(
+          updateMessageFromSocket({
+            messageId: data.messageId,
+            chatId: data.chatId,
+            status: "read",
+            updates: { readAt: data.readAt },
+          })
+        );
+      };
+
+      socket.on("message:receive", handleNewMessage);
+      socket.on("message:status:delivered", handleMessageDelivered);
+      socket.on("message:status:read", handleMessageRead);
+
+      // Cleanup: leave all rooms when component unmounts
+      return () => {
+        console.log("🧹 Leaving all chat rooms...");
+        socket.off("message:receive", handleNewMessage);
+        socket.off("message:status:delivered", handleMessageDelivered);
+        socket.off("message:status:read", handleMessageRead);
+
+        chats.forEach((chat) => {
+          if (chat._id) {
+            socket.emit("chat:leave", { chatId: chat._id });
+            console.log(`👋 Left room: chat:${chat._id}`);
+          }
+        });
+      };
+    } else if (!connected && socket) {
+      console.log("⏳ Socket not connected yet, waiting...");
+    }
+  }, [socket, connected, chats, dispatch, user]);
 
   // Filter chats
   const filteredChats = chats.filter((chat) => {

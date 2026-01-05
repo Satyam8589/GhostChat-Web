@@ -48,14 +48,15 @@ const messageSlice = createSlice({
     // Add message from socket (real-time)
     addMessageFromSocket: (state, action) => {
       const payload = action.payload;
-      
+
       // ALWAYS log for debugging (even in production)
       console.log("📨 Socket message received:", payload);
-      
+
       // Handle different payload structures
       // Backend sends: { chatId, message }
       const message = payload.message || payload;
-      const chatId = payload.chatId || message.chat?._id || message.chat || message.chatId;
+      const chatId =
+        payload.chatId || message.chat?._id || message.chat || message.chatId;
 
       if (!chatId) {
         console.error("❌ Cannot add message: chatId is missing", payload);
@@ -84,9 +85,9 @@ const messageSlice = createSlice({
         // Create a new array to ensure React detects the change
         state.messagesByChat[normalizedChatId] = [
           ...state.messagesByChat[normalizedChatId],
-          message
+          message,
         ];
-        
+
         // ALWAYS log for debugging
         console.log(`✅ Added message to chat ${normalizedChatId}`);
       } else {
@@ -170,20 +171,45 @@ const messageSlice = createSlice({
           state.messagesByChat[chatId] = [];
         }
 
-        // Add message if it doesn't exist
-        const exists = state.messagesByChat[chatId].some(
-          (msg) => msg._id?.toString() === message._id?.toString()
+        // Remove optimistic message (starts with "temp-") and add real message
+        const messages = state.messagesByChat[chatId];
+        const optimisticIndex = messages.findIndex(
+          (msg) =>
+            msg._id?.toString().startsWith("temp-") && msg.status === "sending"
         );
-        if (!exists) {
+
+        if (optimisticIndex !== -1) {
+          // Replace optimistic message with real message
           state.messagesByChat[chatId] = [
-            ...state.messagesByChat[chatId],
-            message
+            ...messages.slice(0, optimisticIndex),
+            message,
+            ...messages.slice(optimisticIndex + 1),
           ];
+          console.log("✅ Replaced optimistic message with real message");
+        } else {
+          // Add message if it doesn't exist (fallback)
+          const exists = state.messagesByChat[chatId].some(
+            (msg) => msg._id?.toString() === message._id?.toString()
+          );
+          if (!exists) {
+            state.messagesByChat[chatId] = [
+              ...state.messagesByChat[chatId],
+              message,
+            ];
+          }
         }
       })
       .addCase(sendMessage.rejected, (state, action) => {
         state.sending = false;
         state.error = action.payload;
+
+        // Remove optimistic message on failure
+        Object.keys(state.messagesByChat).forEach((chatId) => {
+          state.messagesByChat[chatId] = state.messagesByChat[chatId].filter(
+            (msg) => !msg._id?.toString().startsWith("temp-")
+          );
+        });
+        console.log("❌ Message sending failed, removed optimistic message");
       })
 
       // ==================== FETCH MESSAGES ====================
