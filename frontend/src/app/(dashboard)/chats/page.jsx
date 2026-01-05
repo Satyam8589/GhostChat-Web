@@ -173,15 +173,14 @@ export default function ChatsPage() {
   };
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-gray-950 via-gray-900 to-black p-4 sm:p-6 pb-24 lg:pb-6 overflow-hidden">
+    <div className="h-full w-full bg-gradient-to-br from-gray-950 via-gray-900 to-black overflow-hidden relative">
       {/* Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-blob"></div>
         <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-pink-500/10 rounded-full blur-3xl animate-blob animation-delay-2000"></div>
       </div>
 
-      <div className="h-full max-w-7xl mx-auto relative z-10 flex flex-col">
-        {/* Error Message Banner */}
+      <div className="h-full max-w-7xl mx-auto relative z-10 flex flex-col p-2 sm:p-4 pb-20 md:pb-4">{/* Error Message Banner */}
         {errorMessage && (
           <div className="mb-4 p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-400 text-sm flex items-center justify-between animate-slide-down">
             <span>{errorMessage}</span>
@@ -195,12 +194,14 @@ export default function ChatsPage() {
         )}
 
         {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-4 sm:mb-6 flex items-center justify-between flex-shrink-0">
           <div>
-            <h1 className="text-4xl font-bold text-white mb-2 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">
+            <h1 className="text-2xl sm:text-4xl font-bold text-white mb-1 sm:mb-2 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">
               Messages
             </h1>
-            <p className="text-gray-500">All your conversations in one place</p>
+            <p className="text-gray-500 text-sm sm:text-base">
+              All your conversations in one place
+            </p>
           </div>
 
           {/* Action Buttons */}
@@ -210,7 +211,7 @@ export default function ChatsPage() {
               className="flex items-center gap-1.5 px-3 py-2 text-sm bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg shadow-lg hover:shadow-blue-500/50 transition-all duration-300 hover:scale-105 text-white font-medium"
             >
               <FiUsers className="w-4 h-4" />
-              Create Group
+              <span className="hidden sm:inline">Create Group</span>
             </button>
 
             <button
@@ -218,16 +219,15 @@ export default function ChatsPage() {
               className="flex items-center gap-1.5 px-3 py-2 text-sm bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg shadow-lg hover:shadow-purple-500/50 transition-all duration-300 hover:scale-105 text-white font-medium"
             >
               <FiMessageSquare className="w-4 h-4" />
-              Add New
+              <span className="hidden sm:inline">Add New</span>
             </button>
           </div>
         </div>
 
         {/* Main Container */}
-        <div className="flex-1 lg:overflow-hidden bg-gray-900/50 backdrop-blur-xl rounded-2xl border border-white/10 ring-1 ring-white/20 shadow-2xl flex flex-col">
+        <div className="flex-1 min-h-0 bg-gray-900/50 backdrop-blur-xl rounded-2xl border border-white/10 ring-1 ring-white/20 shadow-2xl flex flex-col overflow-hidden">
           {/* Search and Filters */}
-          <div className="p-4 border-b border-gray-800/50">
-            {/* Search Bar */}
+          <div className="p-3 sm:p-4 border-b border-gray-800/50 flex-shrink-0">{/* Search Bar */}
             <div className="relative mb-4">
               <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
               <input
@@ -240,12 +240,12 @@ export default function ChatsPage() {
             </div>
 
             {/* Filter Tabs */}
-            <div className="flex gap-2">
+            <div className="flex gap-2 overflow-x-auto pb-1">
               {["all", "unread", "pinned", "archived"].map((filter) => (
                 <button
                   key={filter}
                   onClick={() => setActiveFilter(filter)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                  className={`px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap ${
                     activeFilter === filter
                       ? "bg-purple-500 text-white"
                       : "bg-gray-800/50 text-gray-400 hover:bg-gray-800"
@@ -258,7 +258,7 @@ export default function ChatsPage() {
           </div>
 
           {/* Chat List */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto min-h-0">
             {loading ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-gray-500">Loading chats...</div>

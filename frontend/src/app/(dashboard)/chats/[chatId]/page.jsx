@@ -645,16 +645,15 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="absolute inset-0 overflow-hidden bg-gradient-to-br from-gray-950 via-gray-900 to-black flex flex-col">
+    <div className="h-full w-full overflow-hidden bg-gradient-to-br from-gray-950 via-gray-900 to-black flex flex-col relative">
       {/* Animated Background Blobs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-blob"></div>
         <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-pink-500/10 rounded-full blur-3xl animate-blob animation-delay-2000"></div>
         <div className="absolute bottom-1/4 left-1/3 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-blob animation-delay-4000"></div>
       </div>
 
-      <div className="h-full max-w-7xl mx-auto w-full relative flex flex-col p-2 sm:p-4 pb-24 lg:pb-4">
-        {/* Chat Header - Fixed, not scrollable */}
+      <div className="h-full max-w-7xl mx-auto w-full relative flex flex-col p-2 sm:p-4 pb-20 md:pb-4 z-10">{/* Chat Header - Fixed, not scrollable */}
         <div className="flex-shrink-0 bg-gray-900/50 backdrop-blur-xl rounded-t-2xl border border-white/10 ring-1 ring-white/20 shadow-2xl p-2 sm:p-4 relative overflow-visible z-50">
           <div className="flex items-center justify-between">
             {/* Left: Back button and user info */}
@@ -738,9 +737,8 @@ export default function ChatPage() {
         {/* Messages Area - Only this section scrolls */}
         <div
           ref={messagesContainerRef}
-          className="flex-1 min-h-0 bg-gray-900/30 backdrop-blur-xl border-x border-white/10 ring-1 ring-white/20 shadow-2xl overflow-y-auto p-4 sm:p-6 space-y-4 relative z-0"
-        >
-          {/* Room Connection Notification */}
+          className="flex-1 min-h-0 bg-gray-900/30 backdrop-blur-xl border-x border-white/10 ring-1 ring-white/20 shadow-2xl overflow-y-auto p-4 sm:p-6 space-y-4 relative z-0 overscroll-none"
+        >{/* Room Connection Notification */}
           {showRoomNotification && (
             <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 animate-slide-down">
               <div className="bg-green-500/90 backdrop-blur-sm text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2">

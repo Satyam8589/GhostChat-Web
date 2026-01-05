@@ -21,7 +21,7 @@ export default function LoginPage() {
 
   // Check if user is already logged in
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (token || isAuthenticated) {
       router.push("/dashboard");
     }

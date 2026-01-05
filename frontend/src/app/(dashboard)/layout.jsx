@@ -169,7 +169,7 @@ const DashboardLayout = ({ children }) => {
       </nav>
 
       {/* Content Area */}
-      <main className="flex-1 min-w-0 relative w-full overflow-y-auto lg:overflow-hidden pb-20 lg:pb-0">
+      <main className="flex-1 min-w-0 relative w-full h-full overflow-hidden">
         {children}
       </main>
 
