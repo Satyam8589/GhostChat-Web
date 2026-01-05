@@ -2,16 +2,16 @@ import { Router } from "express";
 import { verifyToken } from "../middleware/auth.js";
 import upload from "../config/upload.js";
 import {
-    createChat,
-    getUserChats,
-    getChatById,
-    updateChat,
-    deleteChat,
-    addParticipant,
-    removeParticipant,
-    markChatAsRead,
-    togglePinChat,
-    toggleArchiveChat,
+  createChat,
+  getUserChats,
+  getChatById,
+  updateChat,
+  deleteChat,
+  addParticipant,
+  removeParticipant,
+  markChatAsRead,
+  togglePinChat,
+  toggleArchiveChat,
 } from "../controllers/chatController.js";
 
 const router = Router();

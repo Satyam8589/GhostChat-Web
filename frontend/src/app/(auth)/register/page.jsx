@@ -24,8 +24,10 @@ export default function RegisterPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
 
+  // Check if user is already logged in
   useEffect(() => {
-    if (isAuthenticated) {
+    const token = localStorage.getItem('token');
+    if (token || isAuthenticated) {
       router.push("/dashboard");
     }
   }, [isAuthenticated, router]);

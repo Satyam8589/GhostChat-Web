@@ -19,8 +19,10 @@ export default function LoginPage() {
   });
   const [showPassword, setShowPassword] = useState(false);
 
+  // Check if user is already logged in
   useEffect(() => {
-    if (isAuthenticated) {
+    const token = localStorage.getItem('token');
+    if (token || isAuthenticated) {
       router.push("/dashboard");
     }
   }, [isAuthenticated, router]);

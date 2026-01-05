@@ -676,8 +676,8 @@ export default function ChatPage() {
                         className="w-full h-full object-cover"
                       />
                     ) : otherParticipant?.avatar &&
-                    (otherParticipant.avatar.startsWith("data:") ||
-                      otherParticipant.avatar.startsWith("http")) ? (
+                      (otherParticipant.avatar.startsWith("data:") ||
+                        otherParticipant.avatar.startsWith("http")) ? (
                       <img
                         src={otherParticipant.avatar}
                         alt={otherParticipant?.name || "User"}

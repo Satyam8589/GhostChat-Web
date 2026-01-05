@@ -2,9 +2,19 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function LandingPage() {
   const [isScrolled, setIsScrolled] = useState(false);
+  const router = useRouter();
+
+  // Check if user is already logged in and redirect to dashboard
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      router.push('/dashboard');
+    }
+  }, [router]);
 
   useEffect(() => {
     const handleScroll = () => {

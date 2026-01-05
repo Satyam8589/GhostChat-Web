@@ -21,7 +21,7 @@ export const createChat = createAsyncThunk(
   async (chatData, thunkAPI) => {
     try {
       const token = localStorage.getItem("token");
-      
+
       if (!token) {
         return thunkAPI.rejectWithValue("No authentication token found");
       }
@@ -35,24 +35,22 @@ export const createChat = createAsyncThunk(
       if (chatData.image && chatData.image instanceof File) {
         const formData = new FormData();
         formData.append("type", chatData.type);
-        if (chatData.participantId) formData.append("participantId", chatData.participantId);
+        if (chatData.participantId)
+          formData.append("participantId", chatData.participantId);
         if (chatData.name) formData.append("name", chatData.name);
-        if (chatData.description) formData.append("description", chatData.description);
+        if (chatData.description)
+          formData.append("description", chatData.description);
         formData.append("image", chatData.image);
-        
+
         data = formData;
         // Don't set Content-Type header for FormData, let browser set it
       } else {
         headers["Content-Type"] = "application/json";
       }
 
-      const response = await clientServer.post(
-        "/api/chat/create",
-        data,
-        {
-          headers,
-        }
-      );
+      const response = await clientServer.post("/api/chat/create", data, {
+        headers,
+      });
 
       return thunkAPI.fulfillWithValue(response.data);
     } catch (error) {
@@ -73,7 +71,7 @@ export const fetchUserChats = createAsyncThunk(
   async (_, thunkAPI) => {
     try {
       const token = localStorage.getItem("token");
-      
+
       if (!token) {
         return thunkAPI.rejectWithValue("No authentication token found");
       }
@@ -104,7 +102,7 @@ export const fetchChatById = createAsyncThunk(
   async (chatId, thunkAPI) => {
     try {
       const token = localStorage.getItem("token");
-      
+
       if (!token) {
         return thunkAPI.rejectWithValue("No authentication token found");
       }
@@ -137,20 +135,16 @@ export const updateChat = createAsyncThunk(
   async ({ chatId, updates }, thunkAPI) => {
     try {
       const token = localStorage.getItem("token");
-      
+
       if (!token) {
         return thunkAPI.rejectWithValue("No authentication token found");
       }
 
-      const response = await clientServer.put(
-        `/api/chat/${chatId}`,
-        updates,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await clientServer.put(`/api/chat/${chatId}`, updates, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       return thunkAPI.fulfillWithValue(response.data);
     } catch (error) {
@@ -172,7 +166,7 @@ export const deleteChat = createAsyncThunk(
   async (chatId, thunkAPI) => {
     try {
       const token = localStorage.getItem("token");
-      
+
       if (!token) {
         return thunkAPI.rejectWithValue("No authentication token found");
       }
@@ -205,7 +199,7 @@ export const addParticipant = createAsyncThunk(
   async ({ chatId, userId }, thunkAPI) => {
     try {
       const token = localStorage.getItem("token");
-      
+
       if (!token) {
         return thunkAPI.rejectWithValue("No authentication token found");
       }
@@ -242,7 +236,7 @@ export const removeParticipant = createAsyncThunk(
   async ({ chatId, userId }, thunkAPI) => {
     try {
       const token = localStorage.getItem("token");
-      
+
       if (!token) {
         return thunkAPI.rejectWithValue("No authentication token found");
       }
@@ -276,7 +270,7 @@ export const markChatAsRead = createAsyncThunk(
   async (chatId, thunkAPI) => {
     try {
       const token = localStorage.getItem("token");
-      
+
       if (!token) {
         return thunkAPI.rejectWithValue("No authentication token found");
       }
@@ -313,7 +307,7 @@ export const togglePinChat = createAsyncThunk(
   async ({ chatId, pinned }, thunkAPI) => {
     try {
       const token = localStorage.getItem("token");
-      
+
       if (!token) {
         return thunkAPI.rejectWithValue("No authentication token found");
       }
@@ -350,7 +344,7 @@ export const toggleArchiveChat = createAsyncThunk(
   async ({ chatId, archived }, thunkAPI) => {
     try {
       const token = localStorage.getItem("token");
-      
+
       if (!token) {
         return thunkAPI.rejectWithValue("No authentication token found");
       }
