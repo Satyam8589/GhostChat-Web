@@ -149,6 +149,52 @@ export default function ChatPage() {
     }
   }, [chatId, socket, connected, dispatch]); // FIXED: Added socket and connected to dependencies!
 
+  // DIRECT SOCKET MESSAGE LISTENER - Same as test page!
+  useEffect(() => {
+    if (!socket || !chatId) return;
+
+    console.log("🎧 Setting up DIRECT socket message listener for chat:", chatId);
+
+    const handleDirectMessage = (data) => {
+      try {
+        console.log("\\n" + "=".repeat(60));
+        console.log("🔥 DIRECT MESSAGE RECEIVED VIA SOCKET!");
+        console.log("=".repeat(60));
+        console.log("📦 Raw data:", data);
+        console.log("📍 Message chatId:", data.chatId);
+        console.log("📍 Current chatId:", chatId);
+        
+        // Handle both formats: {message: {...}} and direct message object
+        const messageObj = data.message || data;
+        
+        // Only process if message is for this chat
+        if (data.chatId === chatId || messageObj.chat === chatId) {
+          console.log("✅ Message is for THIS chat! Adding directly...");
+          
+          // Add message directly to Redux store
+          dispatch(addMessageFromSocket(data));
+          
+          console.log("✅ Message added to store via direct socket listener!");
+        } else {
+          console.log("⚠️ Message is for different chat, ignoring");
+        }
+        console.log("=".repeat(60) + "\\n");
+      } catch (error) {
+        console.error("❌ Error in direct message handler:", error);
+      }
+    };
+
+    // Listen for message:receive event directly on socket
+    socket.on("message:receive", handleDirectMessage);
+    console.log("✅ Direct socket listener registered for message:receive");
+
+    // Cleanup
+    return () => {
+      console.log("🧹 Removing direct socket listener");
+      socket.off("message:receive", handleDirectMessage);
+    };
+  }, [socket, chatId, dispatch]);
+
   // Listen for real-time messages - use ref to track last processed message
   const { realtimeMessages } = useSelector((state) => state.socket);
   const lastProcessedMessageRef = useRef(null);
