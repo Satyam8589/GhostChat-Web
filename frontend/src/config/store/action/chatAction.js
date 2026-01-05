@@ -26,13 +26,31 @@ export const createChat = createAsyncThunk(
         return thunkAPI.rejectWithValue("No authentication token found");
       }
 
+      // If image file exists, use FormData
+      let data = chatData;
+      let headers = {
+        Authorization: `Bearer ${token}`,
+      };
+
+      if (chatData.image && chatData.image instanceof File) {
+        const formData = new FormData();
+        formData.append("type", chatData.type);
+        if (chatData.participantId) formData.append("participantId", chatData.participantId);
+        if (chatData.name) formData.append("name", chatData.name);
+        if (chatData.description) formData.append("description", chatData.description);
+        formData.append("image", chatData.image);
+        
+        data = formData;
+        // Don't set Content-Type header for FormData, let browser set it
+      } else {
+        headers["Content-Type"] = "application/json";
+      }
+
       const response = await clientServer.post(
         "/api/chat/create",
-        chatData,
+        data,
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers,
         }
       );
 

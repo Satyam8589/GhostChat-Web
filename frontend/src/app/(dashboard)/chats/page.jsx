@@ -22,6 +22,7 @@ import {
   FiArchive,
   FiTrash2,
   FiX,
+  FiImage,
 } from "react-icons/fi";
 import { getSocket } from "@/lib/socket/socket";
 import {
@@ -217,7 +218,7 @@ export default function ChatsPage() {
               className="flex items-center gap-1.5 px-3 py-2 text-sm bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg shadow-lg hover:shadow-purple-500/50 transition-all duration-300 hover:scale-105 text-white font-medium"
             >
               <FiMessageSquare className="w-4 h-4" />
-              New Chat
+              Add New
             </button>
           </div>
         </div>
@@ -408,7 +409,13 @@ function ChatItem({
       {/* Avatar */}
       <div className="relative flex-shrink-0">
         <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-2xl overflow-hidden">
-          {otherParticipant?.profilePicture ? (
+          {chat.type === "group" && chat.groupIcon ? (
+            <img
+              src={chat.groupIcon}
+              alt={displayName}
+              className="w-full h-full object-cover"
+            />
+          ) : otherParticipant?.profilePicture ? (
             <img
               src={otherParticipant.profilePicture}
               alt={displayName}
@@ -531,6 +538,110 @@ function ChatItem({
 // Create Chat Modal
 function CreateChatModal({ onClose, onSubmit }) {
   const [username, setUsername] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchTimeoutRef = useRef(null);
+  const suggestionsRef = useRef(null);
+
+  // Search for users - only exact matches
+  const searchUsers = async (query) => {
+    if (!query || query.trim().length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    setSearching(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+        }/api/user/search?query=${encodeURIComponent(query)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+      if (data.success) {
+        // Filter to only show exact matches (case-insensitive for username)
+        const exactMatches = (data.data || []).filter(
+          (user) =>
+            user.username.toLowerCase() === query.toLowerCase() ||
+            user._id === query
+        );
+        setSuggestions(exactMatches);
+        setShowSuggestions(exactMatches.length > 0);
+      }
+    } catch (error) {
+      console.error("Search error:", error);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  // Handle input change with debounce
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    setUsername(value);
+
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // Set new timeout for search
+    if (value.trim().length >= 2) {
+      searchTimeoutRef.current = setTimeout(() => {
+        searchUsers(value);
+      }, 300);
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+
+  // Handle suggestion click
+  const handleSuggestionClick = (user) => {
+    setUsername(user.username);
+    setShowSuggestions(false);
+    setSuggestions([]);
+  };
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(event.target)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleSubmit = async () => {
+    if (!username.trim()) return;
+    setLoading(true);
+    try {
+      await onSubmit(username);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
@@ -545,13 +656,73 @@ function CreateChatModal({ onClose, onSubmit }) {
           </button>
         </div>
 
-        <input
-          type="text"
-          placeholder="Enter username..."
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 mb-4"
-        />
+        <div className="relative mb-4" ref={suggestionsRef}>
+          <label className="block text-sm text-gray-400 mb-2">
+            Username or User ID
+          </label>
+          <input
+            type="text"
+            placeholder="Enter username..."
+            value={username}
+            onChange={handleInputChange}
+            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            autoFocus
+          />
+
+          {/* Suggestions Dropdown */}
+          {showSuggestions && suggestions.length > 0 && (
+            <div className="absolute top-full mt-2 w-full bg-gray-800 border border-gray-700 rounded-lg shadow-2xl max-h-60 overflow-y-auto z-10">
+              {suggestions.map((user) => (
+                <button
+                  key={user._id}
+                  type="button"
+                  onClick={() => handleSuggestionClick(user)}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-700 transition-colors text-left"
+                >
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold flex-shrink-0">
+                    {user.profilePicture ? (
+                      <img
+                        src={user.profilePicture}
+                        alt={user.username}
+                        className="w-full h-full object-cover rounded-full"
+                      />
+                    ) : (
+                      <span>{user.username[0].toUpperCase()}</span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-medium truncate">
+                      {user.username}
+                    </p>
+                    {user.email && (
+                      <p className="text-xs text-gray-400 truncate">
+                        {user.email}
+                      </p>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Searching indicator */}
+          {searching && (
+            <div className="absolute right-3 top-[42px] flex items-center gap-2 text-gray-400 text-sm">
+              <div className="w-4 h-4 border-2 border-gray-400/30 border-t-gray-400 rounded-full animate-spin"></div>
+              Searching...
+            </div>
+          )}
+
+          {/* No results message */}
+          {showSuggestions &&
+            !searching &&
+            suggestions.length === 0 &&
+            username.trim().length >= 2 && (
+              <div className="absolute top-full mt-2 w-full bg-gray-800 border border-gray-700 rounded-lg p-4 text-center text-gray-400 text-sm">
+                No users found
+              </div>
+            )}
+        </div>
 
         <div className="flex gap-3">
           <button
@@ -561,11 +732,18 @@ function CreateChatModal({ onClose, onSubmit }) {
             Cancel
           </button>
           <button
-            onClick={() => username && onSubmit(username)}
-            disabled={!username}
-            className="flex-1 px-4 py-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-700 disabled:cursor-not-allowed rounded-lg text-white transition-all"
+            onClick={handleSubmit}
+            disabled={!username || loading}
+            className="flex-1 px-4 py-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-700 disabled:cursor-not-allowed rounded-lg text-white transition-all flex items-center justify-center gap-2"
           >
-            Create
+            {loading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                Creating...
+              </>
+            ) : (
+              "Create"
+            )}
           </button>
         </div>
       </div>
@@ -577,7 +755,55 @@ function CreateChatModal({ onClose, onSubmit }) {
 function CreateGroupModal({ onClose, onSubmit }) {
   const [groupName, setGroupName] = useState("");
   const [description, setDescription] = useState("");
-  const [participants, setParticipants] = useState("");
+  const [groupImage, setGroupImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const fileInputRef = useRef(null);
+
+  // Handle image selection
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        alert("Please select an image file");
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert("Image size should be less than 5MB");
+        return;
+      }
+
+      setGroupImage(file);
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Remove selected image
+  const handleRemoveImage = () => {
+    setGroupImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleSubmit = () => {
+    if (groupName) {
+      onSubmit({
+        name: groupName,
+        description,
+        image: groupImage,
+      });
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
@@ -593,6 +819,51 @@ function CreateGroupModal({ onClose, onSubmit }) {
         </div>
 
         <div className="space-y-4">
+          {/* Group Image Upload */}
+          <div className="flex flex-col items-center mb-4">
+            <div className="relative">
+              {imagePreview ? (
+                <div className="relative">
+                  <img
+                    src={imagePreview}
+                    alt="Group preview"
+                    className="w-24 h-24 rounded-full object-cover border-4 border-purple-500"
+                  />
+                  <button
+                    onClick={handleRemoveImage}
+                    className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 rounded-full p-1.5 transition-colors"
+                    type="button"
+                  >
+                    <FiX className="w-4 h-4 text-white" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-24 h-24 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center hover:opacity-80 transition-opacity border-4 border-purple-500/20"
+                  type="button"
+                >
+                  <FiImage className="w-10 h-10 text-white" />
+                </button>
+              )}
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="mt-2 text-sm text-purple-400 hover:text-purple-300 transition-colors"
+              type="button"
+            >
+              {imagePreview ? "Change Image" : "Add Group Image"}
+            </button>
+            <p className="text-xs text-gray-500 mt-1">Max size: 5MB</p>
+          </div>
+
           <input
             type="text"
             placeholder="Group name..."
@@ -609,13 +880,9 @@ function CreateGroupModal({ onClose, onSubmit }) {
             rows={3}
           />
 
-          <input
-            type="text"
-            placeholder="Participant usernames (comma separated)..."
-            value={participants}
-            onChange={(e) => setParticipants(e.target.value)}
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
-          />
+          <p className="text-sm text-gray-400">
+            You can add members after creating the group.
+          </p>
         </div>
 
         <div className="flex gap-3 mt-6">
@@ -626,16 +893,8 @@ function CreateGroupModal({ onClose, onSubmit }) {
             Cancel
           </button>
           <button
-            onClick={() => {
-              if (groupName && participants) {
-                onSubmit({
-                  name: groupName,
-                  description,
-                  participants: participants.split(",").map((p) => p.trim()),
-                });
-              }
-            }}
-            disabled={!groupName || !participants}
+            onClick={handleSubmit}
+            disabled={!groupName}
             className="flex-1 px-4 py-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-700 disabled:cursor-not-allowed rounded-lg text-white transition-all"
           >
             Create Group

@@ -4,6 +4,7 @@ import User from "../models/userModule.js";
 import Message from "../models/messageModel.js";
 import { emitToUser } from "../socket/socket.js";
 import { decrypt } from "../utils/encryption.js";
+import { uploadToCloudinary } from "../utils/cloudinaryService.js";
 
 // ==================== CREATE CHAT ====================
 
@@ -51,47 +52,51 @@ export const createChat = async (req, res) => {
       }
     }
 
-    if (!chatParticipants || chatParticipants.length === 0) {
+    // Skip participant validation for group creation (creator will be added automatically)
+    if (
+      type !== "group" &&
+      (!chatParticipants || chatParticipants.length === 0)
+    ) {
       return res.status(400).json({
         success: false,
         message: "Participants are required",
       });
     }
 
-    // Standardize all participants to strings for comparison
-    chatParticipants = chatParticipants.map((p) => p.toString());
+    // Only process participants for private chats
+    if (type === "private") {
+      // Standardize all participants to strings for comparison
+      chatParticipants = chatParticipants.map((p) => p.toString());
 
-    if (!chatParticipants.includes(userId.toString())) {
-      chatParticipants.push(userId.toString());
-    }
+      if (!chatParticipants.includes(userId.toString())) {
+        chatParticipants.push(userId.toString());
+      }
 
-    // If it's a group chat, we might also have usernames in the participants array
-    // Let's resolve all participants to ObjectIds
-    const resolvedParticipants = [];
-    for (const pId of chatParticipants) {
-      if (mongoose.Types.ObjectId.isValid(pId)) {
-        resolvedParticipants.push(pId);
-      } else {
-        const user = await User.findOne({ username: pId.toLowerCase() });
-        if (user) {
-          resolvedParticipants.push(user._id.toString());
+      // Resolve all participants to ObjectIds
+      const resolvedParticipants = [];
+      for (const pId of chatParticipants) {
+        if (mongoose.Types.ObjectId.isValid(pId)) {
+          resolvedParticipants.push(pId);
+        } else {
+          const user = await User.findOne({ username: pId.toLowerCase() });
+          if (user) {
+            resolvedParticipants.push(user._id.toString());
+          }
         }
       }
-    }
 
-    const users = await User.find({ _id: { $in: resolvedParticipants } });
+      const users = await User.find({ _id: { $in: resolvedParticipants } });
 
-    if (users.length !== resolvedParticipants.length) {
-      return res.status(400).json({
-        success: false,
-        message: "One or more participants not found",
-      });
-    }
+      if (users.length !== resolvedParticipants.length) {
+        return res.status(400).json({
+          success: false,
+          message: "One or more participants not found",
+        });
+      }
 
-    // Use the resolved participants from now on
-    chatParticipants = resolvedParticipants;
+      // Use the resolved participants from now on
+      chatParticipants = resolvedParticipants;
 
-    if (type === "private") {
       if (chatParticipants.length !== 2) {
         return res.status(400).json({
           success: false,
@@ -152,21 +157,38 @@ export const createChat = async (req, res) => {
         });
       }
 
-      if (chatParticipants.length < 2) {
-        return res.status(400).json({
-          success: false,
-          message: "Group must have at least 2 participants",
-        });
+      // For group creation, only add the creator initially
+      // Other participants can be added later
+      const groupParticipants = [userId.toString()];
+
+      // Handle group icon/image upload to Cloudinary
+      let groupImageUrl = null;
+      if (req.file) {
+        const uploadResult = await uploadToCloudinary(
+          req.file.path,
+          "ghostchat/group-icons",
+          "image"
+        );
+
+        if (uploadResult.success) {
+          groupImageUrl = uploadResult.url;
+        } else {
+          return res.status(400).json({
+            success: false,
+            message: "Failed to upload group image",
+            error: uploadResult.error,
+          });
+        }
       }
 
       const newChat = new Chat({
         type: "group",
         name,
         description: description || "",
-        participants: chatParticipants,
+        participants: groupParticipants,
         admin: userId,
         groupKey: groupKey || "default_key",
-        groupIcon: groupIcon || null,
+        groupIcon: groupImageUrl || groupIcon || null,
         isActive: true,
       });
 
@@ -176,16 +198,14 @@ export const createChat = async (req, res) => {
         .populate("participants", "name username email profilePicture status")
         .populate("admin", "name username email");
 
-      // Emit to all participants that a new group was created
-      chatParticipants.forEach((participantId) => {
-        emitToUser(participantId.toString(), "chat:new", {
-          chat: populatedChat,
-        });
+      // Emit to creator that a new group was created
+      emitToUser(userId.toString(), "chat:new", {
+        chat: populatedChat,
       });
 
       return res.status(201).json({
         success: true,
-        message: "Group chat created successfully",
+        message: "Group chat created successfully. You can now add members.",
         chat: populatedChat,
       });
     }
@@ -463,14 +483,30 @@ export const addParticipant = async (req, res) => {
       });
     }
 
-    if (chat.isParticipant(newUserId)) {
+    // Check if newUserId is an ObjectId or username
+    let resolvedUserId;
+    if (mongoose.Types.ObjectId.isValid(newUserId)) {
+      resolvedUserId = newUserId;
+    } else {
+      // If not a valid ObjectId, assume it's a username
+      const user = await User.findOne({ username: newUserId.toLowerCase() });
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: `User with username "${newUserId}" not found`,
+        });
+      }
+      resolvedUserId = user._id.toString();
+    }
+
+    if (chat.isParticipant(resolvedUserId)) {
       return res.status(400).json({
         success: false,
         message: "User is already a participant",
       });
     }
 
-    const user = await User.findById(newUserId);
+    const user = await User.findById(resolvedUserId);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -478,7 +514,7 @@ export const addParticipant = async (req, res) => {
       });
     }
 
-    await chat.addParticipant(newUserId);
+    await chat.addParticipant(resolvedUserId);
 
     const updatedChat = await Chat.findById(chatId)
       .populate("participants", "name username email profilePicture status")

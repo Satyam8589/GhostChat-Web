@@ -13,13 +13,18 @@ import {
   FiImage,
   FiMic,
   FiInfo,
+  FiUserPlus,
+  FiX,
 } from "react-icons/fi";
 import {
   sendMessage,
   fetchMessages,
   markMessagesAsRead,
 } from "@/config/store/action/messageAction";
-import { fetchChatById } from "@/config/store/action/chatAction";
+import {
+  fetchChatById,
+  addParticipant,
+} from "@/config/store/action/chatAction";
 import {
   emitUserTyping,
   emitUserStopTyping,
@@ -48,6 +53,7 @@ export default function ChatPage() {
   const [isUserTyping, setIsUserTyping] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showRoomNotification, setShowRoomNotification] = useState(false);
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
 
   // Redux state
   const { user } = useSelector((state) => state.auth);
@@ -527,7 +533,7 @@ export default function ChatPage() {
     if (currentChat.type === "group") {
       return {
         name: currentChat.name || "Group Chat",
-        avatar: currentChat.avatar || "👥",
+        avatar: currentChat.groupIcon || currentChat.avatar || "👥",
         online: false,
         status: `${currentChat.participants?.length || 0} members`,
       };
@@ -663,7 +669,13 @@ export default function ChatPage() {
               <div className="flex items-center gap-2 sm:gap-3">
                 <div className="relative">
                   <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-xl sm:text-2xl overflow-hidden">
-                    {otherParticipant?.avatar &&
+                    {currentChat?.type === "group" && currentChat?.groupIcon ? (
+                      <img
+                        src={currentChat.groupIcon}
+                        alt={currentChat?.name || "Group"}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : otherParticipant?.avatar &&
                     (otherParticipant.avatar.startsWith("data:") ||
                       otherParticipant.avatar.startsWith("http")) ? (
                       <img
@@ -692,6 +704,15 @@ export default function ChatPage() {
 
             {/* Right: Action buttons */}
             <div className="flex items-center gap-1 sm:gap-2">
+              {currentChat?.type === "group" && (
+                <button
+                  onClick={() => setShowAddMemberModal(true)}
+                  className="p-2 hover:bg-gray-800/50 rounded-lg transition-all duration-300"
+                  title="Add Member"
+                >
+                  <FiUserPlus className="w-5 h-5 text-gray-400 hover:text-white" />
+                </button>
+              )}
               <button
                 className="p-2 hover:bg-gray-800/50 rounded-lg transition-all duration-300"
                 title="Voice Call"
@@ -1388,6 +1409,251 @@ export default function ChatPage() {
             </button>
           </form>
         </div>
+      </div>
+
+      {/* Add Member Modal */}
+      {showAddMemberModal && (
+        <AddMemberModal
+          chatId={chatId}
+          onClose={() => setShowAddMemberModal(false)}
+          onAdd={async (username) => {
+            try {
+              await dispatch(
+                addParticipant({ chatId, userId: username })
+              ).unwrap();
+              setShowAddMemberModal(false);
+              // Refresh chat data
+              dispatch(fetchChatById(chatId));
+            } catch (error) {
+              alert(error || "Failed to add member");
+            }
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// Add Member Modal Component
+function AddMemberModal({ chatId, onClose, onAdd }) {
+  const [username, setUsername] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchTimeoutRef = useRef(null);
+  const suggestionsRef = useRef(null);
+
+  // Search for users - only exact matches
+  const searchUsers = async (query) => {
+    if (!query || query.trim().length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    setSearching(true);
+    try {
+      const token = localStorage.getItem("token");
+      // Search for exact username or ID match
+      const response = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+        }/api/user/search?query=${encodeURIComponent(query)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+      if (data.success) {
+        // Filter to only show exact matches (case-insensitive for username)
+        const exactMatches = (data.data || []).filter(
+          (user) =>
+            user.username.toLowerCase() === query.toLowerCase() ||
+            user._id === query
+        );
+        setSuggestions(exactMatches);
+        setShowSuggestions(exactMatches.length > 0);
+      }
+    } catch (error) {
+      console.error("Search error:", error);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  // Handle input change with debounce
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    setUsername(value);
+
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // Set new timeout for search
+    if (value.trim().length >= 2) {
+      searchTimeoutRef.current = setTimeout(() => {
+        searchUsers(value);
+      }, 300);
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+
+  // Handle suggestion click
+  const handleSuggestionClick = (user) => {
+    setUsername(user.username);
+    setShowSuggestions(false);
+    setSuggestions([]);
+  };
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(event.target)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!username.trim()) return;
+
+    setLoading(true);
+    try {
+      await onAdd(username.trim());
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[200]">
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 w-full max-w-md mx-4">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-bold text-white">Add Member</h2>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+          >
+            <FiX className="w-5 h-5 text-gray-400" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="relative" ref={suggestionsRef}>
+            <label className="block text-sm text-gray-400 mb-2">
+              Username or User ID
+            </label>
+            <input
+              type="text"
+              placeholder="Enter username..."
+              value={username}
+              onChange={handleInputChange}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              autoFocus
+            />
+
+            {/* Suggestions Dropdown */}
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="absolute top-full mt-2 w-full bg-gray-800 border border-gray-700 rounded-lg shadow-2xl max-h-60 overflow-y-auto z-10">
+                {suggestions.map((user) => (
+                  <button
+                    key={user._id}
+                    type="button"
+                    onClick={() => handleSuggestionClick(user)}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-700 transition-colors text-left"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold flex-shrink-0">
+                      {user.profilePicture ? (
+                        <img
+                          src={user.profilePicture}
+                          alt={user.username}
+                          className="w-full h-full object-cover rounded-full"
+                        />
+                      ) : (
+                        <span>{user.username[0].toUpperCase()}</span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white font-medium truncate">
+                        {user.username}
+                      </p>
+                      {user.email && (
+                        <p className="text-xs text-gray-400 truncate">
+                          {user.email}
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Searching indicator */}
+            {searching && (
+              <div className="absolute right-3 top-[42px] flex items-center gap-2 text-gray-400 text-sm">
+                <div className="w-4 h-4 border-2 border-gray-400/30 border-t-gray-400 rounded-full animate-spin"></div>
+                Searching...
+              </div>
+            )}
+
+            {/* No results message */}
+            {showSuggestions &&
+              !searching &&
+              suggestions.length === 0 &&
+              username.trim().length >= 2 && (
+                <div className="absolute top-full mt-2 w-full bg-gray-800 border border-gray-700 rounded-lg p-4 text-center text-gray-400 text-sm">
+                  No users found
+                </div>
+              )}
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-white transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!username.trim() || loading}
+              className="flex-1 px-4 py-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-700 disabled:cursor-not-allowed rounded-lg text-white transition-all flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  Adding...
+                </>
+              ) : (
+                <>
+                  <FiUserPlus className="w-4 h-4" />
+                  Add Member
+                </>
+              )}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

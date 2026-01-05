@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { verifyToken } from "../middleware/auth.js";
+import upload from "../config/upload.js";
 import {
     createChat,
     getUserChats,
@@ -18,7 +19,7 @@ const router = Router();
 // ==================== CHAT ROUTES ====================
 
 // Create new chat (private or group)
-router.post("/create", verifyToken, createChat);
+router.post("/create", verifyToken, upload.single("image"), createChat);
 
 // Get all chats for current user
 router.get("/user-chats", verifyToken, getUserChats);
