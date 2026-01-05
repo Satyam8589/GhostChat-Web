@@ -255,7 +255,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="h-screen overflow-hidden bg-gradient-to-br from-gray-950 via-gray-900 to-black p-4">
+    <div className="min-h-screen lg:h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black p-4 pb-24 lg:pb-4 overflow-y-auto lg:overflow-hidden">
       {/* Animated Background Blobs */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-blob"></div>
@@ -275,11 +275,11 @@ export default function DashboardPage() {
         </div>
 
         {/* Main Grid Layout - Reorganized */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 lg:overflow-hidden">
           {/* Left Column - Messages, Calendar & Notifications */}
-          <div className="lg:col-span-2 flex flex-col gap-4 overflow-hidden">
+          <div className="lg:col-span-2 flex flex-col gap-4 lg:overflow-hidden">
             {/* Pinned Chats Preview */}
-            <div className="bg-gray-900/50 backdrop-blur-xl rounded-2xl border border-white/10 ring-1 ring-white/20 shadow-2xl overflow-hidden flex-shrink-0 h-[280px]">
+            <div className="bg-gray-900/50 backdrop-blur-xl rounded-2xl border border-white/10 ring-1 ring-white/20 shadow-2xl overflow-hidden flex-shrink-0 min-h-[280px] lg:h-[280px]">
               <div className="p-4 border-b border-gray-800/50">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-bold text-white flex items-center gap-2">
@@ -548,7 +548,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Right Column - Profile Card Only */}
-          <div className="flex flex-col overflow-hidden">
+          <div className="flex flex-col lg:overflow-hidden">
             {/* Profile Card */}
             <div className="bg-gray-900/50 backdrop-blur-xl rounded-2xl border border-white/10 ring-1 ring-white/20 shadow-2xl p-4 overflow-hidden relative h-full">
               {/* Background Gradient */}

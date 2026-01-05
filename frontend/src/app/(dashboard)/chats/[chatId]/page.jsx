@@ -7,7 +7,6 @@ import {
   FiArrowLeft,
   FiPhone,
   FiVideo,
-  FiMoreVertical,
   FiSend,
   FiPaperclip,
   FiSmile,
@@ -640,7 +639,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="h-screen overflow-hidden bg-gradient-to-br from-gray-950 via-gray-900 to-black flex flex-col">
+    <div className="absolute inset-0 overflow-hidden bg-gradient-to-br from-gray-950 via-gray-900 to-black flex flex-col">
       {/* Animated Background Blobs */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-blob"></div>
@@ -648,12 +647,12 @@ export default function ChatPage() {
         <div className="absolute bottom-1/4 left-1/3 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-blob animation-delay-4000"></div>
       </div>
 
-      <div className="h-full max-w-7xl mx-auto w-full relative z-10 flex flex-col p-4">
-        {/* Chat Header */}
-        <div className="bg-gray-900/50 backdrop-blur-xl rounded-t-2xl border border-white/10 ring-1 ring-white/20 shadow-2xl p-4">
+      <div className="h-full max-w-7xl mx-auto w-full relative flex flex-col p-2 sm:p-4 pb-20 lg:pb-4">
+        {/* Chat Header - Fixed, not scrollable */}
+        <div className="flex-shrink-0 bg-gray-900/50 backdrop-blur-xl rounded-t-2xl border border-white/10 ring-1 ring-white/20 shadow-2xl p-2 sm:p-4 relative overflow-visible z-50">
           <div className="flex items-center justify-between">
             {/* Left: Back button and user info */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               <button
                 onClick={() => router.push("/chats")}
                 className="p-2 hover:bg-gray-800/50 rounded-lg transition-all duration-300"
@@ -661,9 +660,9 @@ export default function ChatPage() {
                 <FiArrowLeft className="w-5 h-5 text-gray-400 hover:text-white" />
               </button>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <div className="relative">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-2xl overflow-hidden">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-xl sm:text-2xl overflow-hidden">
                     {otherParticipant?.avatar &&
                     (otherParticipant.avatar.startsWith("data:") ||
                       otherParticipant.avatar.startsWith("http")) ? (
@@ -681,10 +680,10 @@ export default function ChatPage() {
                   )}
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-white">
+                  <h2 className="text-sm sm:text-lg font-bold text-white truncate max-w-[120px] sm:max-w-none">
                     {otherParticipant?.name || "Unknown User"}
                   </h2>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-[10px] sm:text-xs text-gray-500">
                     {otherParticipant?.status || "Offline"}
                   </p>
                 </div>
@@ -692,7 +691,7 @@ export default function ChatPage() {
             </div>
 
             {/* Right: Action buttons */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
               <button
                 className="p-2 hover:bg-gray-800/50 rounded-lg transition-all duration-300"
                 title="Voice Call"
@@ -711,20 +710,14 @@ export default function ChatPage() {
               >
                 <FiInfo className="w-5 h-5 text-gray-400 hover:text-white" />
               </button>
-              <button
-                className="p-2 hover:bg-gray-800/50 rounded-lg transition-all duration-300"
-                title="More Options"
-              >
-                <FiMoreVertical className="w-5 h-5 text-gray-400 hover:text-white" />
-              </button>
             </div>
           </div>
         </div>
 
-        {/* Messages Area */}
+        {/* Messages Area - Only this section scrolls */}
         <div
           ref={messagesContainerRef}
-          className="flex-1 bg-gray-900/30 backdrop-blur-xl border-x border-white/10 ring-1 ring-white/20 shadow-2xl overflow-y-auto p-6 space-y-4"
+          className="flex-1 min-h-0 bg-gray-900/30 backdrop-blur-xl border-x border-white/10 ring-1 ring-white/20 shadow-2xl overflow-y-auto p-4 sm:p-6 space-y-4 relative z-0"
         >
           {/* Room Connection Notification */}
           {showRoomNotification && (
@@ -774,9 +767,9 @@ export default function ChatPage() {
                   key={msg._id}
                   className={`flex ${isMine ? "justify-end" : "justify-start"}`}
                 >
-                  <div className={`max-w-[70%]`}>
+                  <div className={`max-w-[280px] lg:max-w-[70%]`}>
                     <div
-                      className={`rounded-2xl px-4 py-3 ${
+                      className={`rounded-2xl px-3 py-2 sm:px-4 sm:py-3 ${
                         isMine
                           ? "bg-green-600 text-white"
                           : "bg-gray-800/50 text-white border border-gray-700/50"
@@ -832,25 +825,25 @@ export default function ChatPage() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Message Input */}
-        <div className="bg-gray-900/50 backdrop-blur-xl rounded-b-2xl border border-white/10 ring-1 ring-white/20 shadow-2xl p-4">
+        {/* Message Input - Fixed, not scrollable */}
+        <div className="flex-shrink-0 bg-gray-900/50 backdrop-blur-xl rounded-b-2xl border border-white/10 ring-1 ring-white/20 shadow-2xl p-2 sm:p-4">
           <form
             onSubmit={handleSendMessage}
-            className="flex items-center gap-3"
+            className="flex items-center gap-1 sm:gap-3"
           >
-            {/* Attachment Button */}
+            {/* Attachment Button - Hidden on mobile */}
             <button
               type="button"
-              className="p-2 hover:bg-gray-800/50 rounded-lg transition-all duration-300"
+              className="hidden sm:block p-2 hover:bg-gray-800/50 rounded-lg transition-all duration-300"
               title="Attach File"
             >
               <FiPaperclip className="w-5 h-5 text-gray-400 hover:text-white" />
             </button>
 
-            {/* Image Button */}
+            {/* Image Button - Hidden on mobile */}
             <button
               type="button"
-              className="p-2 hover:bg-gray-800/50 rounded-lg transition-all duration-300"
+              className="hidden sm:block p-2 hover:bg-gray-800/50 rounded-lg transition-all duration-300"
               title="Send Image"
             >
               <FiImage className="w-5 h-5 text-gray-400 hover:text-white" />
@@ -866,7 +859,7 @@ export default function ChatPage() {
                 handleTyping();
               }}
               placeholder="Type a message..."
-              className="flex-1 bg-gray-950/50 border border-gray-800/50 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all duration-300"
+              className="flex-1 bg-gray-950/50 border border-gray-800/50 rounded-xl px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all duration-300"
               autoComplete="off"
             />
 
@@ -891,7 +884,7 @@ export default function ChatPage() {
 
               {/* Emoji Picker Popup */}
               {showEmojiPicker && (
-                <div className="absolute bottom-full right-0 mb-2 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl p-3 w-80 max-h-64 overflow-y-auto custom-scrollbar">
+                <div className="absolute bottom-full right-0 mb-2 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl p-3 w-64 sm:w-80 max-h-48 sm:max-h-64 overflow-y-auto custom-scrollbar">
                   <div className="grid grid-cols-8 gap-2">
                     {[
                       "😀",
@@ -1368,10 +1361,10 @@ export default function ChatPage() {
               )}
             </div>
 
-            {/* Voice Message Button */}
+            {/* Voice Message Button - Hidden on mobile */}
             <button
               type="button"
-              className="p-2 hover:bg-gray-800/50 rounded-lg transition-all duration-300"
+              className="hidden sm:block p-2 hover:bg-gray-800/50 rounded-lg transition-all duration-300"
               title="Voice Message"
             >
               <FiMic className="w-5 h-5 text-gray-400 hover:text-white" />
@@ -1381,16 +1374,16 @@ export default function ChatPage() {
             <button
               type="submit"
               disabled={!message.trim() || sending}
-              className={`p-3 rounded-xl transition-all duration-300 ${
+              className={`p-2 sm:p-3 rounded-xl transition-all duration-300 ${
                 message.trim() && !sending
                   ? "bg-gradient-to-r from-purple-500 to-pink-500 hover:shadow-lg hover:shadow-purple-500/30"
                   : "bg-gray-800/50 cursor-not-allowed"
               }`}
             >
               {sending ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
               ) : (
-                <FiSend className="w-5 h-5 text-white" />
+                <FiSend className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               )}
             </button>
           </form>

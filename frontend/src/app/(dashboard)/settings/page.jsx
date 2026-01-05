@@ -59,7 +59,7 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div className="h-screen overflow-hidden bg-gradient-to-br from-gray-950 via-gray-900 to-black p-4">
+    <div className="min-h-screen lg:h-screen lg:overflow-hidden bg-gradient-to-br from-gray-950 via-gray-900 to-black p-4">
       {/* Animated Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-blob"></div>
@@ -78,7 +78,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 grid grid-cols-4 gap-4 overflow-hidden">
+        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:overflow-hidden">
           {/* Sidebar */}
           <div className="col-span-1 bg-gray-900/50 backdrop-blur-xl rounded-xl border border-white/10 ring-1 ring-white/20 shadow-2xl p-3 overflow-y-auto">
             <nav className="space-y-2">

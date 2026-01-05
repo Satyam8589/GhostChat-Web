@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
 import {
@@ -172,7 +172,7 @@ export default function ChatsPage() {
   };
 
   return (
-    <div className="h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black p-6">
+    <div className="fixed inset-0 bg-gradient-to-br from-gray-950 via-gray-900 to-black p-4 sm:p-6 pb-24 lg:pb-6 overflow-hidden">
       {/* Animated Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-blob"></div>
@@ -203,27 +203,27 @@ export default function ChatsPage() {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setShowCreateGroup(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl shadow-lg hover:shadow-blue-500/50 transition-all duration-300 hover:scale-105 text-white font-medium"
+              className="flex items-center gap-1.5 px-3 py-2 text-sm bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg shadow-lg hover:shadow-blue-500/50 transition-all duration-300 hover:scale-105 text-white font-medium"
             >
-              <FiUsers className="w-5 h-5" />
+              <FiUsers className="w-4 h-4" />
               Create Group
             </button>
 
             <button
               onClick={() => setShowCreateChat(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl shadow-lg hover:shadow-purple-500/50 transition-all duration-300 hover:scale-105 text-white font-medium"
+              className="flex items-center gap-1.5 px-3 py-2 text-sm bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg shadow-lg hover:shadow-purple-500/50 transition-all duration-300 hover:scale-105 text-white font-medium"
             >
-              <FiMessageSquare className="w-5 h-5" />
+              <FiMessageSquare className="w-4 h-4" />
               New Chat
             </button>
           </div>
         </div>
 
         {/* Main Container */}
-        <div className="flex-1 bg-gray-900/50 backdrop-blur-xl rounded-2xl border border-white/10 ring-1 ring-white/20 shadow-2xl overflow-hidden flex flex-col">
+        <div className="flex-1 lg:overflow-hidden bg-gray-900/50 backdrop-blur-xl rounded-2xl border border-white/10 ring-1 ring-white/20 shadow-2xl flex flex-col">
           {/* Search and Filters */}
           <div className="p-4 border-b border-gray-800/50">
             {/* Search Bar */}
@@ -346,6 +346,21 @@ function ChatItem({
   onDelete,
 }) {
   const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setShowMenu(false);
+      }
+    }
+    if (showMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [showMenu]);
 
   // Sanitize message preview to prevent showing encrypted content
   const sanitizePreview = (text) => {
@@ -462,14 +477,18 @@ function ChatItem({
           e.stopPropagation();
           setShowMenu(!showMenu);
         }}
-        className="flex-shrink-0 p-2 hover:bg-gray-700 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+        className="flex-shrink-0 p-2 hover:bg-gray-700 rounded-lg opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity"
       >
         <FiMoreVertical className="w-5 h-5 text-gray-400" />
       </button>
 
       {/* Dropdown Menu */}
       {showMenu && (
-        <div className="absolute right-4 top-16 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-10 min-w-[150px]">
+        <div
+          ref={menuRef}
+          className="absolute right-4 top-16 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 min-w-[150px]"
+        >
+          {" "}
           <button
             onClick={(e) => {
               e.stopPropagation();

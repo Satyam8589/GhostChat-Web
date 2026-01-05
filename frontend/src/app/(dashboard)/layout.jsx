@@ -131,19 +131,21 @@ const DashboardLayout = ({ children }) => {
 
   return (
     <div className="flex h-screen bg-[#0a0a0a] overflow-hidden">
-      {/* Main Navigation Rail */}
-      <nav className="w-20 bg-[#0f1117] border-r border-gray-800/50 flex flex-col items-center py-8 gap-8 z-50">
-        <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 mb-4 cursor-pointer hover:scale-110 transition-transform">
-          <span className="text-white font-bold text-xl leading-none">G</span>
+      {/* Side Navigation Rail - Visible only on md and up */}
+      <nav className="hidden md:flex md:w-20 bg-[#0f1117] border-r border-gray-800/50 flex-col items-center py-4 md:py-8 gap-4 md:gap-8 z-50">
+        <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 mb-2 md:mb-4 cursor-pointer hover:scale-110 transition-transform">
+          <span className="text-white font-bold text-lg md:text-xl leading-none">
+            G
+          </span>
         </div>
 
-        <div className="flex-1 flex flex-col gap-4">
+        <div className="flex-1 flex flex-col gap-3 md:gap-4">
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               title={item.label}
-              className={`group relative p-3 rounded-2xl transition-all duration-300 ${
+              className={`group relative p-2 md:p-3 rounded-2xl transition-all duration-300 ${
                 pathname.includes(item.href)
                   ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30"
                   : "text-gray-500 hover:text-blue-400 hover:bg-gray-800"
@@ -160,14 +162,38 @@ const DashboardLayout = ({ children }) => {
 
         <button
           title="Logout"
-          className="p-3 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-2xl transition-all duration-300"
+          className="p-2 md:p-3 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-2xl transition-all duration-300"
         >
           <LogoutIcon />
         </button>
       </nav>
 
       {/* Content Area */}
-      <main className="flex-1 min-w-0 relative">{children}</main>
+      <main className="flex-1 min-w-0 relative w-full overflow-y-auto lg:overflow-hidden pb-20 lg:pb-0">
+        {children}
+      </main>
+
+      {/* Bottom Navigation Bar - Visible only on mobile */}
+      <nav className="fixed bottom-0 left-0 right-0 md:hidden bg-[#0f1117] border-t border-gray-800/50 z-[100] shadow-2xl">
+        <div className="flex items-center justify-around py-3 px-2 safe-area-bottom">
+          {navItems.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-300 ${
+                pathname.includes(item.href) ? "text-blue-400" : "text-gray-500"
+              }`}
+            >
+              <div
+                className={`${pathname.includes(item.href) ? "scale-110" : ""}`}
+              >
+                {item.icon}
+              </div>
+              <span className="text-[10px] font-medium">{item.label}</span>
+            </Link>
+          ))}
+        </div>
+      </nav>
     </div>
   );
 };

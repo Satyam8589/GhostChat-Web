@@ -123,7 +123,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="h-screen overflow-hidden bg-gradient-to-br from-gray-950 via-gray-900 to-black p-4">
+    <div className="min-h-screen lg:h-screen lg:overflow-hidden bg-gradient-to-br from-gray-950 via-gray-900 to-black p-4">
       {/* Animated Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-blob"></div>
@@ -168,9 +168,9 @@ export default function ProfilePage() {
         </div>
 
         {/* Two Column Layout */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 overflow-hidden">
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 lg:overflow-hidden">
           {/* Left Column - Profile Info */}
-          <div className="lg:col-span-2 bg-gray-900/50 backdrop-blur-xl rounded-xl border border-white/10 ring-1 ring-white/20 shadow-2xl overflow-hidden flex flex-col">
+          <div className="lg:col-span-2 bg-gray-900/50 backdrop-blur-xl rounded-xl border border-white/10 ring-1 ring-white/20 shadow-2xl lg:overflow-hidden flex flex-col">
             {/* Compact Header with Centered Profile */}
             <div className="h-24 bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 relative flex items-center justify-center">
               {/* Edit Button - Top Right */}
@@ -440,12 +440,14 @@ export default function ProfilePage() {
                   </span>
                 </div>
               </div>
-              
+
               {/* Set Online Button - Only show if offline */}
               {user.status !== "online" && (
                 <button
                   onClick={async () => {
-                    const { updateUserStatus } = await import("@/config/store/action/statusAction");
+                    const { updateUserStatus } = await import(
+                      "@/config/store/action/statusAction"
+                    );
                     dispatch(updateUserStatus("online"));
                   }}
                   className="w-full mt-3 py-2 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 rounded-lg text-green-400 text-xs font-medium transition-all flex items-center justify-center gap-1.5"
