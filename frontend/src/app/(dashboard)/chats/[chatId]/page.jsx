@@ -27,6 +27,7 @@ import {
   joinChatRoom,
   leaveChatRoom,
 } from "@/config/store/action/socketAction";
+import { addMessageFromSocket } from "@/config/store/reducer/messageReducer";
 import { getSocket } from "@/lib/socket/socket";
 
 export default function ChatPage() {
@@ -109,7 +110,7 @@ export default function ChatPage() {
     }
   }, [chatId, dispatch, currentChat]);
 
-  // Join/leave socket room separately
+  // Join/leave socket room - MUST include socket and connected in dependencies!
   useEffect(() => {
     if (chatId && socket && connected) {
       console.log(`🔌 Attempting to join chat room: ${chatId}`);
@@ -134,52 +135,46 @@ export default function ChatPage() {
 
       socket.on("chat:joined", handleRoomJoined);
 
-      // Cleanup: Only remove event listener
-      // DON'T leave room - users need to stay in room for real-time messages
+      // Cleanup: Remove event listener and leave room when changing chats
       return () => {
-        console.log(`🧹 Cleaning up event listeners for room: ${chatId}`);
+        console.log(`🧹 Leaving room: ${chatId}`);
         socket.off("chat:joined", handleRoomJoined);
-        // ✅ REMOVED: dispatch(leaveChatRoom(chatId));
-        // Users stay in room even after component unmount
-        // This allows real-time messages to be delivered
+        // Leave room when switching to a different chat
+        dispatch(leaveChatRoom(chatId));
       };
     } else {
       console.warn(
         `⚠️ Cannot join room - chatId: ${!!chatId}, socket: ${!!socket}, connected: ${connected}`
       );
     }
-  }, [chatId, socket, connected, dispatch]);
+  }, [chatId, socket, connected, dispatch]); // FIXED: Added socket and connected to dependencies!
 
-  // Listen for real-time messages (same pattern as typing!)
+  // Listen for real-time messages - use ref to track last processed message
   const { realtimeMessages } = useSelector((state) => state.socket);
+  const lastProcessedMessageRef = useRef(null);
   
   useEffect(() => {
-    console.log("🔄 Real-time messages changed:", realtimeMessages?.length || 0, "messages");
-    
-    // Check if there's a new message for this chat
+    // Check if there's a new message that we haven't processed yet
     if (realtimeMessages && realtimeMessages.length > 0) {
       const latestMessage = realtimeMessages[0]; // Most recent message
-      console.log("📬 Latest message:", latestMessage);
-      console.log("📍 Current chatId:", chatId);
-      console.log("📍 Message chatId:", latestMessage.chatId);
-      console.log("📍 Message chat:", latestMessage.message?.chat);
+      const messageId = latestMessage.message?._id || latestMessage._id;
       
-      // Check if message is for current chat
-      if (latestMessage.chatId === chatId || latestMessage.message?.chat === chatId) {
-        console.log("✅ Message is for this chat! Adding to store...");
+      // Only process if this is a new message we haven't seen before
+      if (messageId && messageId !== lastProcessedMessageRef.current) {
+        console.log("📬 New message received:", latestMessage);
+        console.log("📍 Message chatId:", latestMessage.chatId);
+        console.log("📍 Message chat:", latestMessage.message?.chat);
         
-        // Add to message reducer using the action
-        dispatch({ 
-          type: "message/addMessageFromSocket", 
-          payload: latestMessage 
-        });
-      } else {
-        console.log("⚠️ Message is for different chat, ignoring");
+        // ALWAYS add message to store, regardless of which chat is open
+        // This ensures messages are stored even if user is on a different chat
+        console.log("✅ Adding message to store via Redux action...");
+        dispatch(addMessageFromSocket(latestMessage));
+        
+        // Mark this message as processed
+        lastProcessedMessageRef.current = messageId;
       }
-    } else {
-      console.log("ℹ️ No real-time messages yet");
     }
-  }, [realtimeMessages, chatId, dispatch]);
+  }, [realtimeMessages, dispatch]);
 
 
   // Track previous message count to detect new messages

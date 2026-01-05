@@ -69,12 +69,19 @@ export const SOCKET_ACTION_TYPES = {
 export const connectSocket = (token) => {
   return (dispatch) => {
     try {
+      console.log("🔌 connectSocket action called with token");
       dispatch({ type: SOCKET_ACTION_TYPES.SOCKET_CONNECT_REQUEST });
 
+      console.log("📡 Initializing socket...");
       const socket = initializeSocket(token);
+      console.log("✅ Socket initialized:", socket ? "SUCCESS" : "FAILED");
+      console.log("🔌 Socket ID:", socket?.id);
+      console.log("🔗 Socket connected:", socket?.connected);
 
       // Setup all event listeners
+      console.log("🎧 Setting up socket event listeners...");
       setupSocketListeners(socket, dispatch);
+      console.log("✅ Socket event listeners setup complete");
     } catch (error) {
       dispatch({
         type: SOCKET_ACTION_TYPES.SOCKET_ERROR,

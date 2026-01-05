@@ -85,10 +85,19 @@ export const sendMessage = async (req, res) => {
     }
 
     // Emit message to all participants via socket
+    console.log("📤 SENDING MESSAGE VIA SOCKET:");
+    console.log("  📍 Chat ID:", chatId);
+    console.log("  📍 Sender ID:", userId);
+    console.log("  📍 Message ID:", message._id);
+    console.log("  📍 Room name: chat:" + chatId);
+    console.log("🚀 Calling emitToChat...");
+    
     emitToChat(chatId, "message:receive", {
       chatId: chatId,
       message: decryptedMessage,
     });
+    
+    console.log("✅ emitToChat call completed");
 
     return res.status(201).json({
       success: true,

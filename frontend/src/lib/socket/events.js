@@ -83,12 +83,18 @@ export const setupSocketListeners = (socket, dispatch) => {
     return;
   }
 
+  console.log("🔧 Setting up socket event listeners...");
+  console.log("📡 Socket ID:", socket.id);
+  console.log("📋 Registering listeners for:", Object.keys(SOCKET_EVENTS).join(", "));
+
   // Connection Events
   socket.on(SOCKET_EVENTS.CONNECT, () => {
+    console.log("🎯 Socket connected! Setting up event listeners...");
     dispatch({
       type: SOCKET_ACTION_TYPES.SOCKET_CONNECTED,
       payload: { socketId: socket.id },
     });
+    console.log("✅ Socket connection confirmed, ID:", socket.id);
   });
 
   socket.on(SOCKET_EVENTS.DISCONNECT, (reason) => {
@@ -125,10 +131,23 @@ export const setupSocketListeners = (socket, dispatch) => {
 
   // Message Events - Using EXACT same pattern as typing (which works!)
   socket.on(SOCKET_EVENTS.MESSAGE_RECEIVE, (data) => {
-    console.log("🔥 SOCKET EVENT: message:receive", data);
+    console.log("\n" + "=".repeat(60));
+    console.log("🔥🔥🔥 INCOMING MESSAGE VIA SOCKET!");
+    console.log("=".repeat(60));
+    console.log("📦 Raw data:", data);
+    console.log("📦 Data type:", typeof data);
+    console.log("📦 Data keys:", Object.keys(data || {}));
+    console.log("📍 Chat ID:", data.chatId);
+    console.log("📍 Message ID:", data.message?._id);
+    console.log("📍 Sender:", data.message?.sender?.name || data.message?.sender);
+    console.log("💬 Content preview:", (data.message?.encryptedContent || "").substring(0, 50));
+    console.log("=".repeat(60));
     
     // Dispatch simple action (same as typing)
+    console.log("📤 Dispatching MESSAGE_RECEIVED action to Redux...");
     dispatch({ type: "MESSAGE_RECEIVED", payload: data });
+    console.log("✅ MESSAGE_RECEIVED action dispatched");
+    console.log("=".repeat(60) + "\n");
   });
 
   socket.on(SOCKET_EVENTS.MESSAGE_DELIVERED, (data) => {

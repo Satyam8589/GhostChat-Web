@@ -1,4 +1,5 @@
 import { io } from "socket.io-client";
+import { BASE_URL } from "../../config";
 
 // Socket.IO client instance
 let socket = null;
@@ -22,44 +23,25 @@ const SOCKET_CONFIG = {
 export const initializeSocket = (token) => {
   // If socket exists and is connected, return it
   if (socket && socket.connected) {
+    console.log("✅ Socket already connected, reusing existing connection");
     return socket;
   }
 
   // If socket exists but is disconnected, try to reconnect
   if (socket && !socket.connected) {
+    console.log("🔄 Socket exists but disconnected, attempting reconnection...");
     socket.auth = { token };
     socket.connect();
     return socket;
   }
 
-  // Create new socket instance
-  // Automatically determine the socket URL based on environment
-  const getSocketURL = () => {
-    // If explicitly set, use it
-    if (process.env.NEXT_PUBLIC_SOCKET_URL) {
-      return process.env.NEXT_PUBLIC_SOCKET_URL;
-    }
-
-    // In production, try to infer from window location
-    if (typeof window !== "undefined") {
-      const protocol = window.location.protocol === "https:" ? "https:" : "http:";
-      const hostname = window.location.hostname;
-      
-      // If on localhost, use port 5000
-      if (hostname === "localhost" || hostname === "127.0.0.1") {
-        return "http://localhost:5000";
-      }
-      
-      // For deployed frontend, assume backend is on same domain
-      // You can customize this based on your deployment setup
-      return `${protocol}//${hostname}`;
-    }
-
-    // Fallback for SSR
-    return "http://localhost:5000";
-  };
-
-  const SOCKET_URL = getSocketURL();
+  // Use the same BASE_URL that works for API calls
+  // This ensures consistency between HTTP and WebSocket connections
+  const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || BASE_URL;
+  
+  console.log("🔌 Initializing new socket connection...");
+  console.log("📍 Socket URL:", SOCKET_URL);
+  console.log("🌍 Environment:", process.env.NODE_ENV);
 
   socket = io(SOCKET_URL, {
     ...SOCKET_CONFIG,
@@ -72,38 +54,69 @@ export const initializeSocket = (token) => {
       : ["websocket", "polling"],
   });
 
+  console.log("📡 Socket instance created");
+  console.log("🔧 Config:", {
+    reconnection: SOCKET_CONFIG.reconnection,
+    timeout: SOCKET_CONFIG.timeout,
+    transports: socket.io.opts.transports,
+  });
+
   // Connection event handlers
   socket.on("connect", () => {
     errorLogged = false; // Reset error flag on successful connection
+    console.log("✅ Socket connected successfully!");
+    console.log("🆔 Socket ID:", socket.id);
+    console.log("🔗 Connected to:", SOCKET_URL);
+    console.log("🚀 Transport:", socket.io.engine.transport.name);
   });
 
-  socket.on("disconnect", (reason) => {});
+  socket.on("disconnect", (reason) => {
+    console.log("⚠️ Socket disconnected");
+    console.log("📍 Reason:", reason);
+    if (reason === "io server disconnect") {
+      console.log("🔄 Server disconnected, attempting manual reconnection...");
+      socket.connect();
+    }
+  });
 
   let errorLogged = false;
   socket.on("connect_error", (error) => {
     // Only log error once to avoid console spam
     if (!errorLogged) {
       errorLogged = true;
+      console.error("❌ Socket connection error:");
+      console.error("📍 Error message:", error.message);
+      console.error("📍 Error type:", error.type);
+      console.error("📍 Attempted URL:", SOCKET_URL);
+      console.error("💡 Troubleshooting:");
+      console.error("   1. Check if NEXT_PUBLIC_API_URL is set correctly");
+      console.error("   2. Verify backend is running and accessible");
+      console.error("   3. Check CORS configuration on backend");
+      console.error("   4. Ensure token is valid");
     }
   });
 
   socket.on("reconnect", (attemptNumber) => {
     errorLogged = false;
+    console.log("✅ Socket reconnected successfully!");
+    console.log("📊 Attempt number:", attemptNumber);
   });
 
   socket.on("reconnect_attempt", (attemptNumber) => {
-    // Silent reconnection attempts
+    console.log(`🔄 Reconnection attempt ${attemptNumber}...`);
   });
 
   socket.on("reconnect_error", (error) => {
-    // Don't log reconnect errors, already logged in connect_error
+    console.log("⚠️ Reconnection failed, will retry...");
   });
 
   socket.on("reconnect_failed", () => {
-    // Reconnection failed silently
+    console.error("❌ All reconnection attempts failed");
+    console.error("💡 Please check your internet connection and backend status");
   });
 
   // Connect the socket
+  console.log("🚀 Connecting socket...");
   socket.connect();
 
   return socket;

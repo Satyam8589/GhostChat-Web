@@ -362,10 +362,23 @@ export const emitToUser = (userId, event, data) => {
  */
 export const emitToChat = (chatId, event, data) => {
   if (io) {
-    console.log(`🔥 EMITTING TO CHAT: Room=chat:${chatId}, Event=${event}`);
-    console.log(`📊 Data:`, JSON.stringify(data).substring(0, 200) + '...');
-    io.to(`chat:${chatId}`).emit(event, data);
-    console.log(`✅ Emission complete`);
+    const roomName = `chat:${chatId}`;
+    const room = io.sockets.adapter.rooms.get(roomName);
+    const roomSize = room?.size || 0;
+    const socketIds = room ? Array.from(room) : [];
+    
+    console.log(`\n${"=".repeat(60)}`);
+    console.log(`🔥 EMITTING MESSAGE TO CHAT ROOM`);
+    console.log(`📍 Room: ${roomName}`);
+    console.log(`👥 Members in room: ${roomSize}`);
+    console.log(`🔌 Socket IDs in room:`, socketIds);
+    console.log(`📡 Event: ${event}`);
+    console.log(`📦 Message preview:`, JSON.stringify(data).substring(0, 150) + '...');
+    console.log(`${"=".repeat(60)}\n`);
+    
+    io.to(roomName).emit(event, data);
+    
+    console.log(`✅ Message emitted to ${roomSize} member(s)\n`);
   } else {
     console.error(`❌ Socket.IO not initialized! Cannot emit to chat:${chatId}`);
   }
