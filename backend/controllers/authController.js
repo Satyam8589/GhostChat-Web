@@ -50,7 +50,7 @@ export const register = async (req, res) => {
             username: username.toLowerCase(),
             email,
             password: hashedPassword,
-            status: "online",  // Set status to online when registering
+            status: "online",
             lastSeen: new Date(),
             lastLogin: new Date(),
             devices: deviceId ? [{
@@ -138,7 +138,6 @@ export const login = async (req, res) => {
             });
         }
 
-        // Update user status to online and lastSeen
         user.status = "online";
         user.lastSeen = new Date();
         user.lastLogin = new Date();
@@ -211,7 +210,6 @@ export const logout = async (req, res) => {
 
         user.devices = user.devices.filter(device => device.deviceId !== deviceId);
 
-        // If no active devices remain, set status to offline
         const hasActiveDevices = user.devices.some(device => device.isActive);
         if (!hasActiveDevices) {
             user.status = "offline";

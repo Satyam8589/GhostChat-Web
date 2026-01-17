@@ -14,7 +14,7 @@ export const initializeSocket = (server) => {
     process.env.CLIENT_URL,
     "http://localhost:3000",
     "http://localhost:3001",
-  ].filter(Boolean);
+  ].filter(Boolean); 
 
   io = new Server(server, {
     cors: {
