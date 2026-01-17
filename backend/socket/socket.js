@@ -4,12 +4,7 @@ import User from "../models/userModule.js";
 
 let io;
 
-/**
- * Initialize Socket.IO server
- * @param {http.Server} server - HTTP server instance
- */
 export const initializeSocket = (server) => {
-  // CORS Configuration - Support multiple origins
   const allowedOrigins = [
     process.env.CLIENT_URL,
     "http://localhost:3000",
@@ -19,41 +14,33 @@ export const initializeSocket = (server) => {
   io = new Server(server, {
     cors: {
       origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps or Postman)
         if (!origin) return callback(null, true);
         
-        // Check if origin is in allowed list
         if (allowedOrigins.includes(origin)) {
           return callback(null, true);
         }
         
-        // Allow Vercel preview and production deployments
         if (origin.includes(".vercel.app")) {
           return callback(null, true);
         }
         
-        // Allow any HTTPS origin in production (you can restrict this further)
         if (process.env.NODE_ENV === "production" && origin.startsWith("https://")) {
-          console.log(`✅ Allowing HTTPS origin: ${origin}`);
+          console.log(`Allowing HTTPS origin: ${origin}`);
           return callback(null, true);
         }
         
-        console.warn(`❌ CORS blocked origin: ${origin}`);
+        console.warn(`CORS blocked origin: ${origin}`);
         callback(new Error("Not allowed by CORS"));
       },
       methods: ["GET", "POST"],
       credentials: true,
     },
-    // Allow both transports, with polling first for better compatibility
     transports: ["polling", "websocket"],
-    // Increase timeouts for deployed environments
     pingTimeout: 60000,
     pingInterval: 25000,
-    // Allow upgrades from polling to websocket
     allowUpgrades: true,
   });
 
-  // Authentication middleware
   io.use(async (socket, next) => {
     try {
       const token = socket.handshake.auth.token;
@@ -66,7 +53,6 @@ export const initializeSocket = (server) => {
       socket.userId = decoded.userId;
       socket.deviceId = decoded.deviceId;
 
-      // Update user status to online
       await User.findByIdAndUpdate(decoded.userId, {
         status: "online",
         lastSeen: new Date(),
@@ -79,14 +65,10 @@ export const initializeSocket = (server) => {
     }
   });
 
-  // Connection handler
   io.on("connection", (socket) => {
-    console.log(`✅ User connected: ${socket.userId} (Socket: ${socket.id})`);
+    console.log(`User connected: ${socket.userId} (Socket: ${socket.id})`);
 
-    // Join user's personal room
     socket.join(`user:${socket.userId}`);
-
-    // Broadcast user online status
     socket.broadcast.emit("user:online", {
       userId: socket.userId,
       timestamp: new Date(),
